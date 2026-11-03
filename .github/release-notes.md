@@ -1,3 +1,7 @@
+## What's new in 1.3.1
+
+- **Delete several at once.** Right-click **All Videos** or **Shorts** in the sidebar and choose **Delete Videos…** or **Delete Shorts…** (also in the **Edit** menu). Click the thumbnails you want to remove, or **Select All** (⌘A), then **Delete**.
+
 ## What's new in 1.3.0
 
 - **YouTube Shorts.** A ⬇ button now sits at the top right of the Shorts player, next to ⋮. Saved Shorts get their own **Shorts** feed in TubeVault: one Short at a time, looping, scroll or press ↑ ↓ to move between them.

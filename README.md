@@ -110,6 +110,7 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Paste a link | Press **⌘D** in TubeVault |
 | Watch offline | Open **TubeVault** from your Dock and click any video |
 | Organise | Click **New Library**, then drag videos onto it (or right-click › **Move to Library**) |
+| Delete several at once | Right-click **All Videos** or **Shorts** › **Delete Videos…** / **Delete Shorts…**, click the ones to remove (or **Select All**), then **Delete** |
 | Check progress | Click **Downloading** in the sidebar |
 
 Downloads keep running if you close the window. To delete a video, right-click it › **Delete Download**.

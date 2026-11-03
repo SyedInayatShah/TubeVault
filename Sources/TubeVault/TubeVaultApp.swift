@@ -33,6 +33,11 @@ struct TubeVaultApp: App {
                 Button("New Library…") { appDelegate.ui.showingNewLibrary = true }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }
+            CommandGroup(after: .pasteboard) {
+                Divider()
+                Button("Delete Videos…") { appDelegate.ui.bulkDelete = .all }
+                Button("Delete Shorts…") { appDelegate.ui.bulkDelete = .shorts }
+            }
             CommandGroup(after: .sidebar) {
                 Button("Show Video Files in Finder") { NSWorkspace.shared.open(Paths.videos) }
             }
@@ -60,6 +65,8 @@ final class UIState {
     var openPaused: String?
     /// The Short to show in the Shorts feed.
     var currentShort: String?
+    /// Shows the pick-and-delete sheet for All Videos or Shorts.
+    var bulkDelete: SidebarItem?
 }
 
 @MainActor

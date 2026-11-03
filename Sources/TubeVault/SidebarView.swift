@@ -20,10 +20,18 @@ struct SidebarView: View {
                 Label("All Videos", systemImage: "play.rectangle.on.rectangle")
                     .badge(store.videos(for: .all).count)
                     .tag(SidebarItem.all)
+                    .contextMenu {
+                        Button("Delete Videos…") { ui.bulkDelete = .all }
+                            .disabled(store.videos(for: .all).isEmpty)
+                    }
 
                 Label("Shorts", systemImage: "film.stack")
                     .badge(store.videos(for: .shorts).count)
                     .tag(SidebarItem.shorts)
+                    .contextMenu {
+                        Button("Delete Shorts…") { ui.bulkDelete = .shorts }
+                            .disabled(store.videos(for: .shorts).isEmpty)
+                    }
 
                 Label("Unsorted", systemImage: "tray")
                     .badge(store.videos(for: .unsorted).count)
@@ -83,6 +91,12 @@ struct SidebarView: View {
             .buttonStyle(.borderless)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+        }
+        .sheet(isPresented: Binding(
+            get: { ui.bulkDelete != nil },
+            set: { if !$0 { ui.bulkDelete = nil } }
+        )) {
+            if let section = ui.bulkDelete { BulkDeleteView(section: section) }
         }
         .alert("New Library", isPresented: $ui.showingNewLibrary) {
             TextField("Name", text: $newName)
