@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "TubeVault – Download for Offline",
+  "version": "1.0.0",
+  "description": "Right-click any YouTube video and choose “Download with TubeVault” to save it to your Mac for offline viewing.",
+  "permissions": ["contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["*://*.youtube.com/*", "*://youtu.be/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Download this video with TubeVault",
+    "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+}

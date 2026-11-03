@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build TubeVault.app (universal)
+        run: ./scripts/build-app.sh --universal
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          ditto -c -k --keepParent build/TubeVault.app dist/TubeVault.zip
+          (cd extension && zip -r ../dist/TubeVault-Chrome-Extension.zip chrome)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TubeVault
+          path: dist/*
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "TubeVault $GITHUB_REF_NAME" \
+            --notes "Download **TubeVault.zip**, unzip, and drag TubeVault.app into Applications. See the README for setup."

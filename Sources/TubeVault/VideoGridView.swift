@@ -1,0 +1,224 @@
+import SwiftUI
+
+struct VideoGridView: View {
+    @Environment(LibraryStore.self) private var store
+    @Environment(UIState.self) private var ui
+
+    let title: String
+    let videos: [Video]
+
+    enum SortOrder: String, CaseIterable, Identifiable {
+        case newest = "Newest First"
+        case oldest = "Oldest First"
+        case title = "Title"
+        case duration = "Duration"
+        var id: Self { self }
+    }
+
+    @State private var search = ""
+    @AppStorage("sortOrder") private var sort: SortOrder = .newest
+
+    private var shown: [Video] {
+        let filtered = search.isEmpty ? videos : videos.filter {
+            $0.title.localizedCaseInsensitiveContains(search) ||
+                $0.channel.localizedCaseInsensitiveContains(search)
+        }
+        switch sort {
+        case .newest: return filtered.sorted { $0.addedAt > $1.addedAt }
+        case .oldest: return filtered.sorted { $0.addedAt < $1.addedAt }
+        case .title: return filtered.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        case .duration: return filtered.sorted { ($0.duration ?? 0) > ($1.duration ?? 0) }
+        }
+    }
+
+    var body: some View {
+        Group {
+            if videos.isEmpty {
+                ContentUnavailableView {
+                    Label("No Videos Yet", systemImage: "play.rectangle")
+                } description: {
+                    Text("Right-click a YouTube video in your browser and choose **Download with TubeVault**, or press ⌘D to paste a link. Downloaded videos play offline.")
+                } actions: {
+                    Button("Download from Link…") { ui.showingAddLink = true }
+                }
+            } else if shown.isEmpty {
+                ContentUnavailableView.search(text: search)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 340), spacing: 20)], spacing: 24) {
+                        ForEach(shown) { video in
+                            NavigationLink(value: video) {
+                                VideoCard(video: video)
+                            }
+                            .buttonStyle(.plain)
+                            .draggable(video.id)
+                            .contextMenu { VideoMenu(video: video) }
+                        }
+                    }
+                    .padding(24)
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationSubtitle(subtitle)
+        .searchable(text: $search, placement: .toolbar, prompt: "Search videos")
+        .toolbar {
+            ToolbarItem {
+                Menu {
+                    Picker("Sort", selection: $sort) {
+                        ForEach(SortOrder.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down")
+                }
+                .help("Sort videos")
+            }
+        }
+    }
+
+    private var subtitle: String {
+        let total = videos.compactMap(\.fileSize).reduce(0, +)
+        let count = "\(videos.count) video\(videos.count == 1 ? "" : "s")"
+        return total > 0 ? "\(count) · \(Format.bytes(total))" : count
+    }
+}
+
+// MARK: - Card
+
+struct VideoCard: View {
+    @Environment(LibraryStore.self) private var store
+    let video: Video
+    @State private var hovering = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Color.clear
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .overlay {
+                    ThumbnailImage(url: store.thumbnailURL(for: video))
+                }
+                .clipped()
+                .overlay {
+                Color.black.opacity(hovering ? 0.25 : 0)
+                Image(systemName: "play.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 52, height: 52)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .opacity(hovering ? 1 : 0)
+                    .scaleEffect(hovering ? 1 : 0.8)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if let d = video.formattedDuration {
+                    Text(d)
+                        .font(.caption2.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 4))
+                        .padding(8)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .shadow(color: .black.opacity(hovering ? 0.25 : 0.1), radius: hovering ? 12 : 4, y: hovering ? 6 : 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(video.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                HStack(spacing: 4) {
+                    Text(video.channel)
+                    if let lib = store.library(video.libraryID) {
+                        Text("·")
+                        Label(lib.name, systemImage: "folder").labelStyle(.titleAndIcon)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            .padding(.horizontal, 2)
+        }
+        .scaleEffect(hovering ? 1.02 : 1)
+        .animation(.easeOut(duration: 0.15), value: hovering)
+        .onHover { hovering = $0 }
+        .contentShape(Rectangle())
+    }
+}
+
+struct VideoMenu: View {
+    @Environment(LibraryStore.self) private var store
+    @Environment(UIState.self) private var ui
+    let video: Video
+
+    var body: some View {
+        Menu("Move to Library") {
+            Button {
+                store.move(videoID: video.id, to: nil)
+            } label: {
+                Label("Unsorted", systemImage: video.libraryID == nil ? "checkmark" : "tray")
+            }
+            if !store.libraries.isEmpty { Divider() }
+            ForEach(store.libraries) { lib in
+                Button {
+                    store.move(videoID: video.id, to: lib.id)
+                } label: {
+                    Label(lib.name, systemImage: video.libraryID == lib.id ? "checkmark" : "folder")
+                }
+            }
+            Divider()
+            Button("New Library…") { ui.showingNewLibrary = true }
+        }
+        Divider()
+        Button("Show in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([store.fileURL(for: video)])
+        }
+        Button("Open on YouTube") {
+            if let url = URL(string: video.sourceURL) { NSWorkspace.shared.open(url) }
+        }
+        Divider()
+        Button("Delete Download", role: .destructive) {
+            store.delete(video)
+        }
+    }
+}
+
+// MARK: - Thumbnails
+
+struct ThumbnailImage: View {
+    let url: URL?
+    @State private var image: NSImage?
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.quaternary)
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Image(systemName: "film")
+                    .font(.largeTitle)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .task(id: url) {
+            image = await ThumbnailCache.shared.image(for: url)
+        }
+    }
+}
+
+actor ThumbnailCache {
+    static let shared = ThumbnailCache()
+    private var cache: [URL: NSImage] = [:]
+
+    func image(for url: URL?) -> NSImage? {
+        guard let url else { return nil }
+        if let hit = cache[url] { return hit }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        cache[url] = image
+        return image
+    }
+}
