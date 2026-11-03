@@ -196,7 +196,7 @@ private struct ShortPage: View {
                             help: paused ? "Play (space)" : "Pause (space)", small: true) { togglePause() }
                 VolumeControl(muted: $muted, volume: $volume)
             }
-            .padding(10)
+            .padding(12)
         }
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 8) {
@@ -210,7 +210,7 @@ private struct ShortPage: View {
                 .buttonStyle(RoundButtonStyle(small: true))
                 .fixedSize()
             }
-            .padding(10)
+            .padding(12)
         }
     }
 
@@ -287,9 +287,9 @@ private struct RoundButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: small ? 13 : 16, weight: .semibold))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: small ? 32 : 44, height: small ? 32 : 44)
+            .frame(width: small ? 40 : 44, height: small ? 40 : 44)
             // Over the video it's dark so it shows on bright Shorts too; beside the feed it's light.
             .background(Circle().fill(small
                 ? Color.black.opacity(configuration.isPressed ? 0.6 : 0.4)
@@ -321,7 +321,7 @@ private struct VolumeControl: View {
         HStack(spacing: 0) {
             Button(action: toggle) {
                 Image(systemName: symbol)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 40, height: 40)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -335,15 +335,15 @@ private struct VolumeControl: View {
             .tint(.white)
             .frame(width: 80)
             .padding(.leading, 2)
-            .padding(.trailing, 12)
+            .padding(.trailing, 16)
             .opacity(hovering ? 1 : 0)
-            .frame(width: hovering ? 94 : 0, alignment: .leading)
+            .frame(width: hovering ? 100 : 0, alignment: .leading)
             .clipped()
             .allowsHitTesting(hovering)
         }
-        .font(.system(size: 13, weight: .semibold))
+        .font(.system(size: 16, weight: .semibold))
         .foregroundStyle(.white)
-        .frame(height: 32)
+        .frame(height: 40)
         .background(Capsule().fill(.black.opacity(0.4)))
         .clipShape(Capsule())
         .fixedSize()

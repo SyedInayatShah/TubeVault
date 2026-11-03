@@ -1,3 +1,7 @@
+## What's new in 1.5.4
+
+- **Bigger buttons on Shorts.** Play/pause, volume and ⋯ are larger and easier to hit.
+
 ## What's new in 1.5.3
 
 - **Scroll Shorts like YouTube.** A small flick on the trackpad, or one notch of the mouse wheel, moves to the next or previous Short. No more dragging halfway down.
