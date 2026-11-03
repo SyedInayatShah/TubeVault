@@ -45,8 +45,27 @@ struct SidebarView: View {
                     .tag(SidebarItem.downloads)
             }
 
+            let playlists = store.libraries.filter(\.isPlaylist)
+            if !playlists.isEmpty {
+                Section("Playlists") {
+                    ForEach(playlists) { library in
+                        Label(library.name, systemImage: "list.number")
+                            .badge(store.count(in: library.id))
+                            .tag(SidebarItem.library(library.id))
+                            .contextMenu {
+                                Button("Rename…") {
+                                    renameText = library.name
+                                    renaming = library
+                                }
+                                Divider()
+                                Button("Delete Playlist…", role: .destructive) { deleting = library }
+                            }
+                    }
+                }
+            }
+
             Section("Libraries") {
-                ForEach(store.libraries) { library in
+                ForEach(store.libraries.filter { !$0.isPlaylist }) { library in
                     Label(library.name, systemImage: "folder")
                         .badge(store.count(in: library.id))
                         .tag(SidebarItem.library(library.id))
@@ -63,7 +82,7 @@ struct SidebarView: View {
                             Button("Delete Library", role: .destructive) { deleting = library }
                         }
                 }
-                if store.libraries.isEmpty {
+                if !store.libraries.contains(where: { !$0.isPlaylist }) {
                     Text("Create a library to organise your videos.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
@@ -126,15 +145,34 @@ struct SidebarView: View {
             "Delete “\(deleting?.name ?? "")”?",
             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })
         ) {
-            Button("Delete Library", role: .destructive) {
-                if let deleting {
-                    if selection == .library(deleting.id) { selection = .all }
-                    store.deleteLibrary(deleting.id)
+            if deleting?.isPlaylist == true {
+                Button("Delete Playlist and Its Videos", role: .destructive) {
+                    if let deleting {
+                        if selection == .library(deleting.id) { selection = .all }
+                        store.deleteLibraryAndVideos(deleting.id)
+                    }
+                    deleting = nil
                 }
-                deleting = nil
+                Button("Keep the Videos in Unsorted") {
+                    if let deleting {
+                        if selection == .library(deleting.id) { selection = .all }
+                        store.deleteLibrary(deleting.id)
+                    }
+                    deleting = nil
+                }
+            } else {
+                Button("Delete Library", role: .destructive) {
+                    if let deleting {
+                        if selection == .library(deleting.id) { selection = .all }
+                        store.deleteLibrary(deleting.id)
+                    }
+                    deleting = nil
+                }
             }
         } message: {
-            Text("The videos inside won’t be deleted — they’ll move to Unsorted.")
+            Text(deleting?.isPlaylist == true
+                 ? "Delete the downloaded videos too, or keep them in Unsorted?"
+                 : "The videos inside won’t be deleted — they’ll move to Unsorted.")
         }
     }
 

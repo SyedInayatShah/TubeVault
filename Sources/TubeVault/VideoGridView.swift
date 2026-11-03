@@ -6,17 +6,27 @@ struct VideoGridView: View {
 
     let title: String
     let videos: [Video]
+    /// A saved YouTube playlist: shown in its picked order, numbered, with Play All.
+    var playlist = false
+    var playAll: () -> Void = {}
 
     enum SortOrder: String, CaseIterable, Identifiable {
         case newest = "Newest First"
         case oldest = "Oldest First"
         case title = "Title"
         case duration = "Duration"
+        case playlist = "Playlist Order"
         var id: Self { self }
     }
 
     @State private var search = ""
-    @AppStorage("sortOrder") private var sort: SortOrder = .newest
+    @AppStorage("sortOrder") private var librarySort: SortOrder = .newest
+    @AppStorage("playlistSortOrder") private var playlistSort: SortOrder = .playlist
+
+    private var sort: SortOrder {
+        get { playlist ? playlistSort : (librarySort == .playlist ? .newest : librarySort) }
+        nonmutating set { if playlist { playlistSort = newValue } else { librarySort = newValue } }
+    }
 
     private var shown: [Video] {
         let filtered = search.isEmpty ? videos : videos.filter {
@@ -24,6 +34,7 @@ struct VideoGridView: View {
                 $0.channel.localizedCaseInsensitiveContains(search)
         }
         switch sort {
+        case .playlist: return filtered
         case .newest: return filtered.sorted { $0.addedAt > $1.addedAt }
         case .oldest: return filtered.sorted { $0.addedAt < $1.addedAt }
         case .title: return filtered.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
@@ -46,9 +57,9 @@ struct VideoGridView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 340), spacing: 20)], spacing: 24) {
-                        ForEach(shown) { video in
+                        ForEach(Array(shown.enumerated()), id: \.element.id) { index, video in
                             NavigationLink(value: video) {
-                                VideoCard(video: video)
+                                VideoCard(video: video, number: playlist && sort == .playlist && search.isEmpty ? index + 1 : nil)
                             }
                             .buttonStyle(.plain)
                             .draggable(video.id)
@@ -63,10 +74,18 @@ struct VideoGridView: View {
         .navigationSubtitle(subtitle)
         .searchable(text: $search, placement: .toolbar, prompt: "Search videos")
         .toolbar {
+            if playlist && !videos.isEmpty {
+                ToolbarItem {
+                    Button(action: playAll) {
+                        Label("Play All", systemImage: "play.fill")
+                    }
+                    .help("Play the playlist from the start, in order")
+                }
+            }
             ToolbarItem {
                 Menu {
-                    Picker("Sort", selection: $sort) {
-                        ForEach(SortOrder.allCases) { Text($0.rawValue).tag($0) }
+                    Picker("Sort", selection: Binding(get: { sort }, set: { sort = $0 })) {
+                        ForEach(SortOrder.allCases.filter { playlist || $0 != .playlist }) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.inline)
                 } label: {
@@ -89,6 +108,8 @@ struct VideoGridView: View {
 struct VideoCard: View {
     @Environment(LibraryStore.self) private var store
     let video: Video
+    /// Position in a playlist, shown on the thumbnail.
+    var number: Int?
     @State private var hovering = false
 
     var body: some View {
@@ -108,6 +129,17 @@ struct VideoCard: View {
                     .background(.ultraThinMaterial, in: Circle())
                     .opacity(hovering ? 1 : 0)
                     .scaleEffect(hovering ? 1 : 0.8)
+            }
+            .overlay(alignment: .topLeading) {
+                if let number {
+                    Text("\(number)")
+                        .font(.caption.weight(.bold).monospacedDigit())
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 24, minHeight: 24)
+                        .padding(.horizontal, number > 9 ? 4 : 0)
+                        .background(.black.opacity(0.75), in: Capsule())
+                        .padding(8)
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 if let d = video.formattedDuration {
@@ -144,7 +176,7 @@ struct VideoCard: View {
                     Text(video.channel)
                     if let lib = store.library(video.libraryID) {
                         Text("·")
-                        Label(lib.name, systemImage: "folder").labelStyle(.titleAndIcon)
+                        Label(lib.name, systemImage: lib.isPlaylist ? "list.number" : "folder").labelStyle(.titleAndIcon)
                     }
                 }
                 .font(.caption)

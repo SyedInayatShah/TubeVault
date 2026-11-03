@@ -1,5 +1,5 @@
 // Adds a TubeVault download button (with a live progress bar) to the YouTube player controls,
-// and to the top-right controls of the Shorts player.
+// and to the like/comment/share column of Shorts.
 // Once saved it becomes an "Open TubeVault" button, and pausing the video tells the app
 // where you stopped so it opens paused at the same spot.
 (() => {
@@ -74,22 +74,60 @@
     button.addEventListener("click", onClick);
 
     wrap.append(pill, button);
-    return { wrap, pill, fill, label, button };
+    return { wrap, pill, fill, label, button, iconHost: button };
+  }
+
+  // Shorts: a round button with a label under it, like the like/comment/share buttons,
+  // that fills up with red as the Short downloads.
+  function buildShorts() {
+    const wrap = document.createElement("div");
+    wrap.className = "tubevault-short";
+
+    const button = document.createElement("button");
+    button.className = "tubevault-short-btn";
+    button.addEventListener("click", onClick);
+    // The red fill carries a white copy of the icon, so the icon turns white wherever the red has reached.
+    const iconHost = document.createElement("span");
+    iconHost.className = "tubevault-short-icon";
+    const fill = document.createElement("div");
+    fill.className = "tubevault-short-fill";
+    const fillIcon = document.createElement("span");
+    fillIcon.className = "tubevault-short-icon";
+    fill.appendChild(fillIcon);
+    button.append(iconHost, fill);
+
+    const label = document.createElement("span");
+    label.className = "tubevault-short-label";
+    label.addEventListener("click", onClick);
+
+    wrap.append(button, label);
+    return { wrap, pill: button, fill, label, button, iconHost, fillIcon, shorts: true };
+  }
+
+  // Take the colours from YouTube's own like button, so it fits light and dark mode alike.
+  function matchTheme(bar) {
+    const like = bar.querySelector("like-button-view-model button");
+    if (!like || !ui?.shorts) return;
+    const style = getComputedStyle(like);
+    ui.wrap.style.setProperty("--tubevault-bg", style.backgroundColor);
+    ui.wrap.style.setProperty("--tubevault-fg", style.color);
   }
 
   function mount() {
     const shorts = isShorts();
     const host = shorts
-      ? document.querySelector("ytd-shorts-player-controls #right-controls, #right-controls")
+      ? document.querySelector("ytd-reel-video-renderer[is-active] reel-action-bar-view-model") ||
+        document.querySelector("reel-action-bar-view-model")
       : document.querySelector("#movie_player .ytp-right-controls-left") ||
         document.querySelector("#movie_player .ytp-right-controls");
     if (!host) return;
+    if (shorts) matchTheme(host);
     if (ui && ui.wrap.parentNode === host) return;
     ui?.wrap.remove();
-    ui = build();
-    ui.wrap.classList.toggle("is-shorts", shorts);
+    ui = shorts ? buildShorts() : build();
     if (shorts) {
       host.insertBefore(ui.wrap, host.firstChild);
+      matchTheme(host);
     } else {
       host.insertBefore(ui.wrap, host.querySelector(".ytp-subtitles-button") || host.firstChild);
     }
@@ -107,8 +145,17 @@
     ui.wrap.classList.toggle("is-starting", state === "starting");
     ui.wrap.classList.toggle("is-message", message);
     ui.wrap.classList.toggle("is-done", state === "done");
-    ui.fill.style.width = (state === "starting" ? 100 : pct) + "%";
-    ui.label.textContent =
+    ui.wrap.classList.toggle("is-failed", state === "failed");
+    const level = state === "done" || (state === "starting" && !ui.shorts) ? 100 : active ? pct : 0;
+    ui.fill.style[ui.shorts ? "height" : "width"] = level + "%";
+    ui.label.textContent = ui.shorts ? (
+      state === "done" ? "Saved" :
+      state === "offline" ? "Open app" :
+      state === "failed" ? "Retry" :
+      state === "starting" ? "Starting" :
+      state === "finishing" ? "Saving" :
+      active ? `${pct}%` : "Save"
+    ) :
       state === "done" ? "Open TubeVault" :
       state === "offline" ? "Open TubeVault" :
       state === "failed" ? "Failed – retry" :
@@ -116,7 +163,8 @@
       state === "finishing" ? "Saving…" : `${pct}%`;
 
     const iconName = state === "done" ? "done" : state === "failed" ? "failed" : "download";
-    ui.button.replaceChildren(icon(iconName));
+    ui.iconHost.replaceChildren(icon(iconName));
+    ui.fillIcon?.replaceChildren(icon(iconName));
     const tip = {
       done: "Saved – open it in TubeVault, paused right here",
       failed: "Download failed – click to retry" + (s.error ? `\n${s.error}` : ""),

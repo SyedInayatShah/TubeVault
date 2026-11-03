@@ -5,6 +5,8 @@ struct PlayerScreen: View {
     @Environment(LibraryStore.self) private var store
     @Environment(UIState.self) private var ui
     let video: Video
+    /// Called when the video plays to the end (a playlist moves on to its next video).
+    var onEnded: () -> Void = {}
 
     @State private var player: AVPlayer?
     @State private var autosave: Any?
@@ -34,6 +36,11 @@ struct PlayerScreen: View {
                     }
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    if let playlist = playlistPosition {
+                        Label(playlist, systemImage: "list.number")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
                 Menu {
@@ -59,6 +66,20 @@ struct PlayerScreen: View {
         // Closing the window or quitting doesn't always tear the view down first.
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in savePosition() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in savePosition() }
+        .onReceive(NotificationCenter.default.publisher(for: AVPlayerItem.didPlayToEndTimeNotification)) { note in
+            guard let item = note.object as? AVPlayerItem, item === player?.currentItem else { return }
+            onEnded()
+        }
+    }
+
+    /// "Playlist name · 3 of 12 · Next: title" for a video in a saved playlist.
+    private var playlistPosition: String? {
+        guard let library = store.library(video.libraryID), library.isPlaylist else { return nil }
+        let list = store.videos(for: .library(library.id))
+        guard let i = list.firstIndex(where: { $0.id == video.id }) else { return nil }
+        var text = "\(library.name) · \(i + 1) of \(list.count)"
+        if i + 1 < list.count { text += " · Next: \(list[i + 1].title)" }
+        return text
     }
 
     private func start() {

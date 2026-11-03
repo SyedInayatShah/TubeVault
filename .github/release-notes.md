@@ -1,3 +1,16 @@
+## What's new in 1.4.0
+
+- **Download whole playlists.** On any playlist there's a new ⬇ button next to loop and shuffle (or next to **Save** and **Share** on the playlist page). It opens a picker right on YouTube:
+  - Click videos in the order you want them. The number next to each one is the order it downloads in and plays in.
+  - **Select All** adds the rest in playlist order; **Clear** starts over.
+  - Each video is saved separately, all inside one playlist in TubeVault, so a 100-song playlist doesn't flood **All Videos**.
+- **Playlists in the app.** Saved playlists get their own **Playlists** section in the sidebar. Videos are numbered in your order, **Play All** plays them straight through, and the player shows what's next.
+- **Download progress on YouTube.** A small card in the bottom-left corner shows how far the playlist has got (for example *3 of 12*). Minimize it to a little progress ring, or close it; the download carries on. When it's done, **Open in TubeVault** takes you straight to the playlist.
+- **One notification per playlist**, sent when the whole playlist is saved, instead of one for every video.
+- **Shorts button moved.** The Shorts **Save** button now sits above the like button instead of over the volume control. It fills up red from the bottom while the Short downloads and turns into ✓ **Saved**.
+
+**Updating the extension:** TubeVault updates itself. Then in `chrome://extensions`, click **↻ reload** on the TubeVault card and refresh your YouTube tabs. If you didn't load it from **Documents › TubeVault Chrome Extension**, load the new folder from the extension zip.
+
 ## What's new in 1.3.1
 
 - **Delete several at once.** Right-click **All Videos** or **Shorts** in the sidebar and choose **Delete Videos…** or **Delete Shorts…** (also in the **Edit** menu). Click the thumbnails you want to remove, or **Select All** (⌘A), then **Delete**.
@@ -25,7 +38,7 @@
 2. Unzip **TubeVault.zip** and drag **TubeVault.app** into **Applications**.
 3. **If macOS blocks it** ("Apple could not verify…" or "damaged"): click **Done**, then go to **System Settings › Privacy & Security**, scroll to **Security**, and click **Open Anyway**. If it's still blocked, run `xattr -dr com.apple.quarantine /Applications/TubeVault.app` in Terminal.
 4. Unzip the extension and move the **TubeVault Chrome Extension** folder somewhere permanent. In Chrome, go to `chrome://extensions`, turn on **Developer mode** (top-right toggle), click **Load unpacked**, and select that folder.
-5. Open any YouTube video and click the **⬇** icon in the player's bottom bar. When it's saved, click **Open TubeVault** to watch it, paused at the same spot.
+5. Open any YouTube video and click the **⬇** icon in the player's bottom bar. When it's saved, click **Open TubeVault** to watch it, paused at the same spot. On a playlist, use the **⬇** next to loop and shuffle; on a Short, **Save** above the like button.
 
 **Upgrading from 1.1 or earlier:** remove the old TubeVault extension in `chrome://extensions` and load the new folder once. Videos you already downloaded move into TubeVault's own folder automatically.
 

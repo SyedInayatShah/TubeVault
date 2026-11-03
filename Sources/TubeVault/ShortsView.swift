@@ -18,7 +18,7 @@ struct ShortsView: View {
                 ContentUnavailableView {
                     Label("No Shorts Yet", systemImage: "film.stack")
                 } description: {
-                    Text("On a YouTube Short, click the ⬇ button at the top right of the player. Saved Shorts show up here to scroll through offline.")
+                    Text("On a YouTube Short, click Save above the like button. Saved Shorts show up here to scroll through offline.")
                 }
             } else {
                 feed(shorts)

@@ -36,6 +36,8 @@ final class DownloadTask: Identifiable {
     @ObservationIgnored var height: Int?
     @ObservationIgnored var width: Int?
     @ObservationIgnored var thumbnailJob: Task<String?, Never>?
+    /// The library (a saved playlist) the video goes into once it's downloaded.
+    @ObservationIgnored var libraryID: UUID?
 
     init(url: String) {
         self.url = url
@@ -89,7 +91,8 @@ final class DownloadManager {
 
     // MARK: Public API
 
-    func enqueue(_ raw: String) {
+    /// into: the library (a saved playlist) to put the video in. quiet: no toast, for a batch.
+    func enqueue(_ raw: String, into libraryID: UUID? = nil, quiet: Bool = false) {
         let link = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: link),
               let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
@@ -97,17 +100,153 @@ final class DownloadManager {
             return
         }
         if let id = Self.youtubeID(from: url), store.contains(videoID: id) {
-            notice = "Already in your library."
+            if let libraryID { store.move(videoID: id, to: libraryID) }
+            if !quiet { notice = "Already in your library." }
             return
         }
-        if tasks.contains(where: { $0.url == link && !$0.isFailed }) {
-            notice = "Already downloading."
+        if let existing = tasks.first(where: { $0.url == link && !$0.isFailed }) {
+            if let libraryID { existing.libraryID = libraryID }
+            if !quiet { notice = "Already downloading." }
             return
         }
         let task = DownloadTask(url: link)
+        task.libraryID = libraryID
         tasks.append(task)
-        notice = "Download started."
+        if !quiet { notice = "Download started." }
         startQueued()
+    }
+
+    func task(forVideo id: String) -> DownloadTask? {
+        tasks.first { $0.videoID == id || URL(string: $0.url).flatMap(Self.youtubeID(from:)) == id }
+    }
+
+    // MARK: Playlists
+
+    struct PlaylistEntry {
+        var id: String
+        var title: String
+        var channel: String
+        var duration: Double?
+    }
+
+    enum PlaylistFetch {
+        case loading
+        case ready(title: String, entries: [PlaylistEntry], fetched: Date)
+        case failed(String)
+    }
+
+    @ObservationIgnored private var playlistFetches: [String: PlaylistFetch] = [:]
+
+    /// The playlist's videos for the picker on YouTube. Fetching takes a few seconds, so the first call
+    /// starts it and answers "loading"; the extension asks again until it's ready.
+    /// video: the video it's playing on, which Mixes need.
+    func playlist(_ listID: String, video: String?) -> [String: Any] {
+        switch playlistFetches[listID] {
+        case .ready(let title, let entries, let fetched) where Date().timeIntervalSince(fetched) < 300:
+            return [
+                "state": "ready",
+                "title": title,
+                "entries": entries.map { e in
+                    var item: [String: Any] = ["id": e.id, "title": e.title, "channel": e.channel,
+                                               "saved": store.contains(videoID: e.id)]
+                    if let d = e.duration { item["duration"] = d }
+                    return item
+                },
+            ]
+        case .loading:
+            return ["state": "loading"]
+        case .failed(let message):
+            playlistFetches[listID] = nil // the next request tries again
+            return ["state": "failed", "error": message]
+        default:
+            playlistFetches[listID] = .loading
+            Task { playlistFetches[listID] = await Self.fetchPlaylist(listID, video: video) }
+            return ["state": "loading"]
+        }
+    }
+
+    nonisolated private static func fetchPlaylist(_ listID: String, video: String?) async -> PlaylistFetch {
+        guard let ytdlp = Tools.path(for: "yt-dlp") else {
+            return .failed("yt-dlp isn’t installed. In Terminal run: brew install yt-dlp ffmpeg")
+        }
+        let url = video.map { "https://www.youtube.com/watch?v=\($0)&list=\(listID)" }
+            ?? "https://www.youtube.com/playlist?list=\(listID)"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ytdlp)
+        process.arguments = ["--flat-playlist", "--yes-playlist", "-J", "--no-warnings", url]
+        process.environment = Tools.environment
+        let out = Pipe(), err = Pipe()
+        process.standardOutput = out
+        process.standardError = err
+        process.standardInput = FileHandle.nullDevice
+        do { try process.run() } catch { return .failed(error.localizedDescription) }
+
+        let errReader = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }
+        let data = await Task.detached { out.fileHandleForReading.readDataToEndOfFile() }.value
+        let stderr = String(decoding: await errReader.value, as: UTF8.self)
+        process.waitUntilExit()
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let raw = json["entries"] as? [[String: Any]] else {
+            return .failed(errorMessage(from: stderr))
+        }
+        let entries = raw.compactMap { e -> PlaylistEntry? in
+            guard let id = e["id"] as? String, let title = e["title"] as? String,
+                  !["[Private video]", "[Deleted video]"].contains(title) else { return nil }
+            return PlaylistEntry(id: id, title: title,
+                                 channel: (e["channel"] ?? e["uploader"]) as? String ?? "",
+                                 duration: e["duration"] as? Double)
+        }
+        return .ready(title: json["title"] as? String ?? "YouTube Playlist", entries: entries, fetched: Date())
+    }
+
+    /// Downloads the picked videos, in the picked order, into the playlist's own library.
+    func downloadPlaylist(_ listID: String, title: String, ids: [String]) -> [String: Any] {
+        let library = store.playlistLibrary(listID, title: title, order: ids)
+        for id in ids {
+            enqueue("https://www.youtube.com/watch?v=\(id)", into: library.id, quiet: true)
+        }
+        notice = "Downloading \(ids.count) video\(ids.count == 1 ? "" : "s") into “\(library.name)”."
+        return playlistStatus(listID)
+    }
+
+    /// Overall progress of a saved playlist, for the bar on YouTube.
+    func playlistStatus(_ listID: String) -> [String: Any] {
+        guard let library = store.library(forPlaylist: listID), let order = library.order else {
+            return ["state": "none"]
+        }
+        let missing = order.filter { !store.contains(videoID: $0) }
+        let pending = missing.compactMap { task(forVideo: $0) }.filter { !$0.isFailed }
+        let failed = missing.count - pending.count
+        let current = pending.first { $0.state != .starting } ?? pending.first
+        let saved = order.count - missing.count
+        let progress = (Double(saved) + pending.map(\.progress).reduce(0, +)) / Double(max(order.count, 1))
+        var reply: [String: Any] = [
+            "state": missing.isEmpty ? "done" : pending.isEmpty ? "failed" : "downloading",
+            "title": library.name,
+            "total": order.count,
+            "saved": saved,
+            "failed": failed,
+            "progress": progress,
+        ]
+        // Until yt-dlp reports the title, the task's title is just its link.
+        if let current, current.title != current.url { reply["current"] = current.title }
+        return reply
+    }
+
+    /// Tries the playlist's failed videos again.
+    func retryPlaylist(_ listID: String) -> [String: Any] {
+        guard let library = store.library(forPlaylist: listID), let order = library.order else {
+            return ["state": "none"]
+        }
+        for id in order where !store.contains(videoID: id) {
+            if let task = task(forVideo: id) {
+                if task.isFailed { retry(task) }
+            } else {
+                enqueue("https://www.youtube.com/watch?v=\(id)", into: library.id, quiet: true)
+            }
+        }
+        return playlistStatus(listID)
     }
 
     /// YouTube rate-limits (and serves low quality to) many simultaneous downloads, so a few run at once.
@@ -316,7 +455,7 @@ final class DownloadManager {
             sourceURL: task.url,
             fileName: fileURL.lastPathComponent,
             thumbnailFileName: thumbName,
-            libraryID: nil,
+            libraryID: task.libraryID,
             addedAt: Date(),
             fileSize: size,
             isShort: Self.isShort(task)
@@ -325,7 +464,15 @@ final class DownloadManager {
             store.setPosition(videoID: id, seconds: seconds)
         }
         tasks.removeAll { $0.id == task.id }
-        Self.notifyFinished(title: task.title)
+        // A playlist gets one notification, once all of it is saved.
+        if let library = store.library(task.libraryID), library.isPlaylist {
+            let order = library.order ?? []
+            if order.allSatisfy(store.contains(videoID:)) {
+                Self.notifyFinished(title: "“\(library.name)” is saved: \(order.count) video\(order.count == 1 ? "" : "s")")
+            }
+        } else {
+            Self.notifyFinished(title: task.title)
+        }
     }
 
     // MARK: Helpers
@@ -354,7 +501,7 @@ final class DownloadManager {
         return nil
     }
 
-    private static func errorMessage(from stderr: String) -> String {
+    nonisolated private static func errorMessage(from stderr: String) -> String {
         let lines = stderr.split(separator: "\n").map(String.init)
         if let err = lines.last(where: { $0.hasPrefix("ERROR:") }) {
             return err.replacingOccurrences(of: "ERROR: ", with: "")

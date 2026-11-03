@@ -67,6 +67,8 @@ final class UIState {
     var currentShort: String?
     /// Shows the pick-and-delete sheet for All Videos or Shorts.
     var bulkDelete: SidebarItem?
+    /// A saved playlist to show, from "Open in TubeVault" on YouTube.
+    var openLibrary: UUID?
 }
 
 @MainActor
@@ -140,7 +142,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let value = { (name: String) in items.first(where: { $0.name == name })?.value }
 
-        if url.host == "open" {
+        if url.host == "open", let list = value("list") {
+            // tubevault://open?list=<playlist id> once a playlist is saved.
+            guard let library = store.library(forPlaylist: list) else { return }
+            ui.showingSetup = false
+            ui.openLibrary = library.id
+            NSApp.activate(ignoringOtherApps: true)
+        } else if url.host == "open" {
             // tubevault://open?v=<id>&t=<seconds> from the "Open TubeVault" button on YouTube.
             guard let id = value("v"), store.contains(videoID: id) else { return }
             if let t = value("t").flatMap(Double.init) {

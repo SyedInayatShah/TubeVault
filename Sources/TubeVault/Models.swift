@@ -28,6 +28,12 @@ struct VideoLibrary: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String
     var createdAt = Date()
+    /// Set for a YouTube playlist saved from the extension.
+    var playlistID: String?
+    /// Video ids in the order they were picked on YouTube: the order they download and play in.
+    var order: [String]?
+
+    var isPlaylist: Bool { playlistID != nil }
 }
 
 enum SidebarItem: Hashable {

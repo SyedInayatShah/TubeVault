@@ -92,12 +92,35 @@ final class LibraryStore {
 
     func videos(for item: SidebarItem) -> [Video] {
         switch item {
-        case .all: videos.filter { !$0.short }
+        // Playlist videos stay in their playlist so a long one doesn't flood All Videos.
+        case .all: videos.filter { !$0.short && !isInPlaylist($0) }
         case .shorts: videos.filter(\.short)
         case .unsorted: videos.filter { $0.libraryID == nil && !$0.short }
-        case .library(let id): videos.filter { $0.libraryID == id }
+        case .library(let id): inOrder(videos.filter { $0.libraryID == id }, of: library(id))
         case .downloads: []
         }
+    }
+
+    private func isInPlaylist(_ video: Video) -> Bool {
+        library(video.libraryID)?.isPlaylist ?? false
+    }
+
+    /// A playlist's videos in the order picked on YouTube; anything else after them, newest first.
+    private func inOrder(_ list: [Video], of library: VideoLibrary?) -> [Video] {
+        guard let order = library?.order else { return list }
+        let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+        return list.sorted {
+            let a = rank[$0.id] ?? .max, b = rank[$1.id] ?? .max
+            return a != b ? a < b : $0.addedAt > $1.addedAt
+        }
+    }
+
+    /// What plays after this video when it ends: the next one in its playlist.
+    func nextVideo(after video: Video) -> Video? {
+        guard let id = video.libraryID, library(id)?.isPlaylist == true else { return nil }
+        let list = videos(for: .library(id))
+        guard let i = list.firstIndex(where: { $0.id == video.id }), i + 1 < list.count else { return nil }
+        return list[i + 1]
     }
 
     func count(in libraryID: UUID) -> Int {
@@ -112,6 +135,34 @@ final class LibraryStore {
         libraries.append(library)
         save()
         return library
+    }
+
+    func library(forPlaylist playlistID: String) -> VideoLibrary? {
+        libraries.first { $0.playlistID == playlistID }
+    }
+
+    /// The library for a YouTube playlist, created the first time. The picked order goes first;
+    /// videos saved from it before keep their place after those.
+    func playlistLibrary(_ playlistID: String, title: String, order ids: [String]) -> VideoLibrary {
+        if let i = libraries.firstIndex(where: { $0.playlistID == playlistID }) {
+            libraries[i].order = ids + (libraries[i].order ?? []).filter { !ids.contains($0) }
+            save()
+            return libraries[i]
+        }
+        var library = VideoLibrary(name: title.isEmpty ? "YouTube Playlist" : title)
+        library.playlistID = playlistID
+        library.order = ids
+        libraries.append(library)
+        save()
+        return library
+    }
+
+    /// Deletes a playlist together with its downloaded videos.
+    func deleteLibraryAndVideos(_ libraryID: UUID) {
+        for video in videos where video.libraryID == libraryID {
+            delete(video)
+        }
+        deleteLibrary(libraryID)
     }
 
     func rename(_ libraryID: UUID, to name: String) {

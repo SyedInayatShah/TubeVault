@@ -29,7 +29,8 @@
 - **Open TubeVault button.** When a download finishes, the player button becomes **Open TubeVault**. Clicking it opens the app at that video.
 - **Pick up where you paused.** Pause a video on YouTube that you've downloaded, open TubeVault, and the video is waiting, paused at the same second.
 - **Best quality, always.** Each video downloads at the highest resolution YouTube offers, up to 4K.
-- **YouTube Shorts.** A ⬇ button sits at the top right of the Shorts player, next to ⋮. Saved Shorts get their own **Shorts** feed in the app: one at a time, looping, scroll or press ↑ ↓ to move between them.
+- **Whole playlists, in your order.** On any playlist, click the ⬇ button next to loop and shuffle (or next to Save and Share on the playlist page). Pick the videos in the order you want them: that's the order they download in and play in. **Select All** takes the rest. They save as separate videos inside one playlist in the app, which plays them straight through. A small card in the bottom-left corner of YouTube follows the download.
+- **YouTube Shorts.** A ⬇ **Save** button sits above the like button on every Short and fills up red as it downloads. Saved Shorts get their own **Shorts** feed in the app: one at a time, looping, scroll or press ↑ ↓ to move between them.
 - **Resume anywhere.** Close a video in TubeVault and it continues from the same spot next time.
 - **Automatic updates.** When a new version is released, TubeVault shows a notification and a banner. Click **Update Now** and it installs itself and restarts.
 - **Offline library.** Open TubeVault from your Dock to see only your downloaded videos. It works with no internet.
@@ -103,13 +104,16 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Download the video you're watching | Click the **⬇** icon in the YouTube player's bottom bar. A red progress bar shows next to it. |
 | Watch it in TubeVault | When it's saved, click the red **Open TubeVault** button in the player bar. The app opens the video paused at the same spot. |
 | Continue later | Pause on YouTube, then open TubeVault from the Dock. It jumps to that video, paused where you stopped. |
-| Download a Short | On a Short, click the **⬇** at the top right of the player, next to **⋮** |
+| Download a playlist | Click the **⬇** next to the playlist's loop and shuffle buttons (or next to **Save** and **Share** on a playlist page). Click the videos in the order you want, or **Select All**, then **Download**. |
+| Watch a playlist | Click it under **Playlists** in TubeVault's sidebar, then **Play All**. Each video moves on to the next one. |
+| Download a Short | Click **Save** above the like button. It fills up red, then shows ✓ **Saved**. Click it again to open the Short in TubeVault. |
 | Watch your Shorts | Click **Shorts** in TubeVault's sidebar, then scroll, swipe or press **↑ ↓**. Click a Short to pause it. |
 | Download from a thumbnail | Right-click the thumbnail › **Download with TubeVault** |
 | Download from Safari or another app | Right-click a YouTube link › **Services › Download with TubeVault** |
 | Paste a link | Press **⌘D** in TubeVault |
 | Watch offline | Open **TubeVault** from your Dock and click any video |
 | Organise | Click **New Library**, then drag videos onto it (or right-click › **Move to Library**) |
+| Delete a playlist | Right-click it under **Playlists** › **Delete Playlist…**, then delete its videos too or keep them in Unsorted |
 | Delete several at once | Right-click **All Videos** or **Shorts** › **Delete Videos…** / **Delete Shorts…**, click the ones to remove (or **Select All**), then **Delete** |
 | Check progress | Click **Downloading** in the sidebar |
 
@@ -156,6 +160,7 @@ Then load the `extension/chrome` folder in Chrome as described above.
 | Local server for progress and positions (`127.0.0.1:47823`, only accepts the extension) | `Sources/TubeVault/LocalServer.swift` |
 | In-app setup guide | `Sources/TubeVault/SetupGuideView.swift` |
 | Chrome extension (player button, right-click menu) | `extension/chrome` |
+| Playlist button, picker and progress card | `extension/chrome/playlist.js` |
 | Library data | `~/Library/Application Support/TubeVault/library.json` |
 | Video files and thumbnails | `~/Library/Application Support/TubeVault/Videos` and `…/Thumbnails` |
 | CI build and releases | `.github/workflows/build.yml`. Push a `v*` tag to publish a release. |

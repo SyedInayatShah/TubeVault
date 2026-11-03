@@ -51,6 +51,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     api(`/status?v=${encodeURIComponent(msg.v)}`)
       .then(sendResponse)
       .catch(() => sendResponse({ state: "offline" }));
+  } else if (msg.type === "playlist") {
+    // Opening the picker counts as a click, so TubeVault is launched if needed.
+    api(`/playlist?list=${encodeURIComponent(msg.list)}&v=${encodeURIComponent(msg.v || "")}`, true)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
+  } else if (msg.type === "playlist-download") {
+    const q = `list=${encodeURIComponent(msg.list)}&title=${encodeURIComponent(msg.title || "")}&ids=${encodeURIComponent(msg.ids)}`;
+    api(`/playlist-download?${q}`, true)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
+  } else if (msg.type === "playlist-status" || msg.type === "playlist-retry") {
+    api(`/${msg.type}?list=${encodeURIComponent(msg.list)}`)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
   } else if (msg.type === "position") {
     api(`/position?v=${encodeURIComponent(msg.v)}&t=${encodeURIComponent(msg.t)}`)
       .then(sendResponse)

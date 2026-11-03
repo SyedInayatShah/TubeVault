@@ -30,7 +30,7 @@ final class LocalServer {
 
     private func accept(_ connection: NWConnection) {
         connection.start(queue: .main)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 16_384) { [weak self] data, _, _, _ in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, _, _ in
             Task { @MainActor in
                 guard let self else { return connection.cancel() }
                 self.handle(String(decoding: data ?? Data(), as: UTF8.self), on: connection)
@@ -92,6 +92,19 @@ final class LocalServer {
             }
             downloads.recordPosition(videoID: id, seconds: seconds)
             return ("200 OK", ["ok": true])
+        case "/playlist":
+            guard let list = query["list"], !list.isEmpty else { return ("400 Bad Request", ["error": "missing list"]) }
+            return ("200 OK", downloads.playlist(list, video: query["v"].flatMap { $0.isEmpty ? nil : $0 }))
+        case "/playlist-download":
+            let ids = (query["ids"] ?? "").split(separator: ",").map(String.init).filter { !$0.isEmpty }
+            guard let list = query["list"], !list.isEmpty, !ids.isEmpty else {
+                return ("400 Bad Request", ["error": "missing list or ids"])
+            }
+            return ("200 OK", downloads.downloadPlaylist(list, title: query["title"] ?? "", ids: ids))
+        case "/playlist-status":
+            return ("200 OK", downloads.playlistStatus(query["list"] ?? ""))
+        case "/playlist-retry":
+            return ("200 OK", downloads.retryPlaylist(query["list"] ?? ""))
         default:
             return ("404 Not Found", ["error": "not found"])
         }
@@ -102,11 +115,7 @@ final class LocalServer {
         if store.contains(videoID: videoID) {
             return ["state": "done", "progress": 1]
         }
-        let task = downloads.tasks.first {
-            $0.videoID == videoID ||
-                URL(string: $0.url).flatMap(DownloadManager.youtubeID(from:)) == videoID
-        }
-        guard let task else { return ["state": "none"] }
+        guard let task = downloads.task(forVideo: videoID) else { return ["state": "none"] }
         switch task.state {
         case .starting: return ["state": "starting", "progress": 0]
         case .downloading: return ["state": "downloading", "progress": task.progress]

@@ -18,12 +18,17 @@ struct ContentView: View {
             NavigationStack(path: $path) {
                 detail
                     .navigationDestination(for: Video.self) { video in
-                        PlayerScreen(video: video)
+                        PlayerScreen(video: video) { playNext(after: video) }
                     }
             }
         }
         .onChange(of: selection) { path.removeAll() }
         .onChange(of: ui.openVideoID) { openRequestedVideo() }
+        .onChange(of: ui.openLibrary) { _, id in
+            guard let id else { return }
+            ui.openLibrary = nil
+            selection = .library(id)
+        }
         .onAppear { openRequestedVideo() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -68,6 +73,13 @@ struct ContentView: View {
         }
     }
 
+    /// A playlist plays straight through, in the order it was picked.
+    private func playNext(after video: Video) {
+        guard let next = store.nextVideo(after: video) else { return }
+        store.setPosition(videoID: next.id, seconds: 0)
+        path = [next]
+    }
+
     @ViewBuilder
     private var detail: some View {
         switch selection ?? .all {
@@ -81,7 +93,12 @@ struct ContentView: View {
             VideoGridView(title: "Unsorted", videos: store.videos(for: .unsorted))
         case .library(let id):
             if let library = store.library(id) {
-                VideoGridView(title: library.name, videos: store.videos(for: .library(id)))
+                VideoGridView(title: library.name, videos: store.videos(for: .library(id)), playlist: library.isPlaylist) {
+                    if let first = store.videos(for: .library(id)).first {
+                        store.setPosition(videoID: first.id, seconds: 0)
+                        path = [first]
+                    }
+                }
             } else {
                 VideoGridView(title: "All Videos", videos: store.videos(for: .all))
             }
