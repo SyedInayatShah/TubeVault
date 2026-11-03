@@ -33,24 +33,39 @@ final class LocalServer {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 16_384) { [weak self] data, _, _, _ in
             Task { @MainActor in
                 guard let self else { return connection.cancel() }
-                let request = String(decoding: data ?? Data(), as: UTF8.self)
-                let (status, body) = self.respond(to: request)
-                self.send(status: status, json: body, on: connection)
+                self.handle(String(decoding: data ?? Data(), as: UTF8.self), on: connection)
             }
         }
     }
 
-    private func respond(to request: String) -> (String, [String: Any]) {
+    private func handle(_ request: String, on connection: NWConnection) {
         let lines = request.components(separatedBy: "\r\n")
         let parts = lines.first?.split(separator: " ") ?? []
-        guard parts.count >= 2 else { return ("400 Bad Request", ["error": "bad request"]) }
-
-        let headers = lines.dropFirst().map { $0.lowercased() }
-        guard headers.contains(where: { $0.hasPrefix("x-tubevault:") }) else {
-            return ("403 Forbidden", ["error": "forbidden"])
+        var headers: [String: String] = [:]
+        for line in lines.dropFirst() {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let name = line[..<colon].lowercased()
+            headers[name] = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
         }
-        if let origin = headers.first(where: { $0.hasPrefix("origin:") }),
-           !origin.contains("chrome-extension://") {
+
+        // Only the browser extension may talk to us; plain tools like curl send no Origin.
+        let origin = headers["origin"]
+        if let origin, !origin.hasPrefix("chrome-extension://") {
+            return send(status: "403 Forbidden", json: ["error": "forbidden"], origin: nil, on: connection)
+        }
+
+        // Chrome's CORS / Local Network Access preflight for the custom header.
+        if parts.first == "OPTIONS" {
+            return send(status: "204 No Content", json: nil, origin: origin, on: connection)
+        }
+
+        let (status, body) = respond(method: parts, headers: headers)
+        send(status: status, json: body, origin: origin, on: connection)
+    }
+
+    private func respond(method parts: [Substring], headers: [String: String]) -> (String, [String: Any]) {
+        guard parts.count >= 2 else { return ("400 Bad Request", ["error": "bad request"]) }
+        guard headers["x-tubevault"] != nil else {
             return ("403 Forbidden", ["error": "forbidden"])
         }
 
@@ -94,9 +109,17 @@ final class LocalServer {
         }
     }
 
-    private func send(status: String, json: [String: Any], on connection: NWConnection) {
-        let body = (try? JSONSerialization.data(withJSONObject: json)) ?? Data("{}".utf8)
-        let head = "HTTP/1.1 \(status)\r\nContent-Type: application/json\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+    private func send(status: String, json: [String: Any]?, origin: String?, on connection: NWConnection) {
+        let body = json.flatMap { try? JSONSerialization.data(withJSONObject: $0) } ?? Data()
+        var head = "HTTP/1.1 \(status)\r\nContent-Type: application/json\r\nContent-Length: \(body.count)\r\nConnection: close\r\n"
+        if let origin {
+            head += "Access-Control-Allow-Origin: \(origin)\r\n"
+            head += "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+            head += "Access-Control-Allow-Headers: X-TubeVault\r\n"
+            head += "Access-Control-Allow-Private-Network: true\r\n"
+            head += "Access-Control-Max-Age: 600\r\n"
+        }
+        head += "\r\n"
         connection.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in
             connection.cancel()
         })

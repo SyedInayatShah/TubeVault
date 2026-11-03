@@ -42,7 +42,10 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const tabId = sender.tab?.id;
   if (msg.type === "download") {
-    startDownload(msg.url, tabId).then(sendResponse);
+    // The in-player button launches the app itself (it has the click), so no fallback here.
+    api(`/download?url=${encodeURIComponent(cleanURL(msg.url))}`)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
   } else if (msg.type === "status") {
     api(`/status?v=${encodeURIComponent(msg.v)}`)
       .then(sendResponse)

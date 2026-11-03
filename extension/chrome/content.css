@@ -40,6 +40,9 @@
   background-size: 200% 100%;
   animation: tubevault-shimmer 1.2s linear infinite;
 }
+.tubevault-wrap.is-message .tubevault-track {
+  display: none;
+}
 .tubevault-label {
   min-width: 30px;
   font-variant-numeric: tabular-nums;

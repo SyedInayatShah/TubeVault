@@ -75,18 +75,22 @@
     const pct = Math.round((s.progress || 0) * 100);
     const active = ["starting", "downloading", "finishing"].includes(state);
 
-    ui.wrap.classList.toggle("is-active", active);
+    ui.wrap.classList.toggle("is-active", active || state === "offline" || state === "failed");
     ui.wrap.classList.toggle("is-starting", state === "starting");
+    ui.wrap.classList.toggle("is-message", state === "offline" || state === "failed");
     ui.fill.style.width = (state === "starting" ? 100 : pct) + "%";
     ui.label.textContent =
-      state === "starting" ? "Starting…" : state === "finishing" ? "Saving…" : `${pct}%`;
+      state === "offline" ? "Open TubeVault" :
+      state === "failed" ? "Failed – retry" :
+      state === "starting" ? "Starting…" :
+      state === "finishing" ? "Saving…" : `${pct}%`;
 
     const iconName = state === "done" ? "done" : state === "failed" ? "failed" : "download";
     ui.button.replaceChildren(icon(iconName));
     const tip = {
       done: "Saved in TubeVault – click to open",
       failed: "Download failed – click to retry" + (s.error ? `\n${s.error}` : ""),
-      offline: "Download with TubeVault",
+      offline: "TubeVault isn’t running – click to open it and download",
       none: "Download with TubeVault",
     }[state] || `Downloading… ${pct}%`;
     ui.button.title = tip;
@@ -101,11 +105,24 @@
       return;
     }
     if (["starting", "downloading", "finishing"].includes(state)) return;
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+    if (state === "offline") {
+      // Launch the app straight from this click (Chrome only opens apps on a user gesture).
+      render({ state: "starting" });
+      window.location.href = "tubevault://download?url=" + encodeURIComponent(url);
+      startPolling();
+      return;
+    }
+
     render({ state: "starting" });
-    chrome.runtime.sendMessage(
-      { type: "download", url: `https://www.youtube.com/watch?v=${videoId}` },
-      () => startPolling()
-    );
+    chrome.runtime.sendMessage({ type: "download", url }, (s) => {
+      if (chrome.runtime.lastError || !s || s.state === "offline") {
+        render({ state: "offline" });
+        return;
+      }
+      startPolling();
+    });
   }
 
   function refreshStatus() {
