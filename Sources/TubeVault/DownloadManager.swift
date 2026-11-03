@@ -140,7 +140,8 @@ final class DownloadManager {
 
     // MARK: Running yt-dlp
 
-    private func run(_ task: DownloadTask) async {
+    /// cookiesFrom: a browser to borrow the YouTube sign-in from, used when YouTube asks to "confirm you're not a bot".
+    private func run(_ task: DownloadTask, cookiesFrom browser: String? = nil) async {
         guard let ytdlp = Tools.path(for: "yt-dlp") else {
             task.state = .failed("yt-dlp isn’t installed. In Terminal run: brew install yt-dlp ffmpeg")
             return
@@ -160,7 +161,12 @@ final class DownloadManager {
             "--print", "before_dl:TVPARTS %(requested_formats.:.format_id)j",
             "--print", "after_move:TVFILE %(filepath)s",
             "-o", Paths.videos.path + "/%(title).80B [%(id)s].%(ext)s",
+            // The mobile web client often gets through when YouTube bot-checks the default ones.
+            "--extractor-args", "youtube:player_client=default,mweb",
         ]
+        if let browser {
+            args += ["--cookies-from-browser", browser]
+        }
         if let ffmpeg = Tools.path(for: "ffmpeg") {
             args += ["--ffmpeg-location", ffmpeg]
         }
@@ -186,7 +192,13 @@ final class DownloadManager {
 
         guard result.status == 0, let path = task.outputPath,
               FileManager.default.fileExists(atPath: path) else {
-            task.state = .failed(Self.errorMessage(from: result.stderr))
+            let message = Self.errorMessage(from: result.stderr)
+            if browser == nil, message.contains("not a bot"), let signedIn = Tools.cookieBrowser {
+                // Retry once as the user's signed-in browser (macOS may ask to allow Keychain access).
+                task.reset()
+                return await run(task, cookiesFrom: signedIn)
+            }
+            task.state = .failed(message)
             return
         }
         await finish(task, filePath: path)
@@ -367,6 +379,15 @@ enum Tools {
         let existing = env["PATH"].map { [$0] } ?? []
         env["PATH"] = (searchPaths + existing).joined(separator: ":")
         return env
+    }
+
+    /// The first installed browser yt-dlp can read YouTube cookies from.
+    static var cookieBrowser: String? {
+        let apps = [
+            ("chrome", "Google Chrome"), ("brave", "Brave Browser"), ("edge", "Microsoft Edge"),
+            ("chromium", "Chromium"), ("vivaldi", "Vivaldi"), ("firefox", "Firefox"), ("safari", "Safari"),
+        ]
+        return apps.first { FileManager.default.fileExists(atPath: "/Applications/\($0.1).app") }?.0
     }
 }
 

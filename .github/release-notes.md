@@ -1,3 +1,8 @@
+## What's new in 1.2.1
+
+- Fixes downloads that failed straight away with "Failed – retry" when YouTube asked to *confirm you're not a bot*. TubeVault now tries YouTube's mobile web client too, and if YouTube still blocks it, retries once using your browser's YouTube sign-in. The first time that happens, macOS may ask to let TubeVault read "Chrome Safe Storage". Click **Always Allow**.
+- Only the app changed. Your loaded extension keeps working.
+
 ## ⬇️ What to download
 
 | File | What it is |

@@ -116,6 +116,14 @@ After updating, open `chrome://extensions` and click the **↻ reload** arrow on
 
 ---
 
+## 🩺 Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| The button shows **Failed – retry** right away | YouTube may be asking to *confirm you're not a bot*. TubeVault 1.2.1+ works around this automatically. If macOS asks to let TubeVault use **Chrome Safe Storage**, click **Always Allow** so it can use your YouTube sign-in. If it still fails, run `brew upgrade yt-dlp`. |
+| The button stays on **Starting…** | Make sure you loaded the 1.2+ extension (remove the old card in `chrome://extensions` first), then refresh the YouTube tab. |
+| You can see why a download failed | Open TubeVault's **Downloading** section. The full error is shown under the video. |
+
 ## 🛠 Build from source
 
 Requires Xcode 15+ (or the Swift 5.10 toolchain).
