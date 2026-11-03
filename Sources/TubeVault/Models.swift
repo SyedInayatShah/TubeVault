@@ -15,6 +15,8 @@ struct Video: Codable, Identifiable, Hashable {
     var resumeAt: Double?
     /// A YouTube Short: vertical, shown in the swipeable Shorts feed instead of the grid.
     var isShort: Bool?
+    /// When it was queued, to the microsecond (addedAt is saved to the second); keeps Shorts saved together in feed order.
+    var queuedAt: Double?
 
     var short: Bool { isShort ?? false }
 

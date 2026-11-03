@@ -30,7 +30,8 @@
 - **Pick up where you paused.** Pause a video on YouTube that you've downloaded, open TubeVault, and the video is waiting, paused at the same second.
 - **Best quality, always.** Each video downloads at the highest resolution YouTube offers, up to 4K.
 - **Whole playlists, in your order.** On any playlist, click the ⬇ button next to loop and shuffle (or next to Save and Share on the playlist page). Pick the videos in the order you want them: that's the order they download in and play in. **Select All** takes the rest. They save as separate videos inside one playlist in the app, which plays them straight through. A small card in the bottom-left corner of YouTube follows the download.
-- **YouTube Shorts.** A ⬇ **Save** button sits above the like button on every Short and fills up red as it downloads. Saved Shorts get their own **Shorts** feed in the app: one at a time, looping, scroll or press ↑ ↓ to move between them.
+- **YouTube Shorts.** A ⬇ **Save** button sits above the like button on every Short and fills up red as it downloads. Saved Shorts get their own **Shorts** feed in the app: one at a time, looping, scroll or press ↑ ↓ to move between them. It reopens on the Short you watched last.
+- **Save all Shorts from your feed.** Under **Save** there's a **Save all** button. It saves the Shorts that come after the one you're on, the same ones your own Shorts feed would show you next, up to 400. Nothing has to play: it reads the upcoming list from YouTube with your sign-in. It keeps going until it reaches 400, you click **Stop**, or you close that YouTube tab. Your Mac stays awake while it downloads. Then scroll through them offline in TubeVault's **Shorts** feed, in the same order.
 - **Resume anywhere.** Close a video in TubeVault and it continues from the same spot next time.
 - **Automatic updates.** When a new version is released, TubeVault shows a notification and a banner. Click **Update Now** and it installs itself and restarts.
 - **Offline library.** Open TubeVault from your Dock to see only your downloaded videos. It works with no internet.
@@ -107,6 +108,7 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Download a playlist | Click the **⬇** next to the playlist's loop and shuffle buttons (or next to **Save** and **Share** on a playlist page). Click the videos in the order you want, or **Select All**, then **Download**. |
 | Watch a playlist | Click it under **Playlists** in TubeVault's sidebar, then **Play All**. Each video moves on to the next one. |
 | Download a Short | Click **Save** above the like button. It fills up red, then shows ✓ **Saved**. Click it again to open the Short in TubeVault. |
+| Save the Shorts coming up in your feed | On any Short, click **Save all** (under **Save**). A card in the bottom-left corner counts them up to 400; click **Stop** to end early, or just close the tab. Shorts take roughly 5–30 MB each, so 400 can be several GB; it stops by itself if your Mac gets low on space. |
 | Watch your Shorts | Click **Shorts** in TubeVault's sidebar, then scroll, swipe or press **↑ ↓**. Click a Short to pause it. |
 | Download from a thumbnail | Right-click the thumbnail › **Download with TubeVault** |
 | Download from Safari or another app | Right-click a YouTube link › **Services › Download with TubeVault** |

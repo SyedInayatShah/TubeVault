@@ -58,7 +58,9 @@ struct ShortsView: View {
         .onKeyPress(.upArrow) { step(-1, in: shorts); return .handled }
         .onAppear {
             focused = true
-            if let id = ui.currentShort, shorts.contains(where: { $0.id == id }) {
+            // Carry on from the Short watched last, even after quitting.
+            let last = ui.currentShort ?? UserDefaults.standard.string(forKey: "lastShort")
+            if let id = last, shorts.contains(where: { $0.id == id }) {
                 current = id
             } else if current == nil {
                 current = shorts.first?.id
@@ -67,7 +69,10 @@ struct ShortsView: View {
         .onChange(of: ui.currentShort) { _, id in
             if let id { withAnimation { current = id } }
         }
-        .onChange(of: current) { _, id in ui.currentShort = id }
+        .onChange(of: current) { _, id in
+            ui.currentShort = id
+            if let id { UserDefaults.standard.set(id, forKey: "lastShort") }
+        }
     }
 
     /// Up/down buttons, like YouTube's on desktop, for a mouse without smooth scrolling.

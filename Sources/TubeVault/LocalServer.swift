@@ -101,6 +101,9 @@ final class LocalServer {
                 return ("400 Bad Request", ["error": "missing list or ids"])
             }
             return ("200 OK", downloads.downloadPlaylist(list, title: query["title"] ?? "", ids: ids))
+        case "/shorts-batch":
+            let list = { (name: String) in (query[name] ?? "").split(separator: ",").map(String.init) }
+            return ("200 OK", downloads.shortsBatch(add: list("add"), ids: list("ids"), cancel: list("cancel")))
         case "/playlist-status":
             return ("200 OK", downloads.playlistStatus(query["list"] ?? ""))
         case "/playlist-retry":

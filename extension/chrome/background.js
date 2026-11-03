@@ -61,6 +61,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     api(`/playlist-download?${q}`, true)
       .then(sendResponse)
       .catch(() => sendResponse({ state: "offline" }));
+  } else if (msg.type === "shorts-batch") {
+    const q = ["add", "ids", "cancel"].map((k) => `${k}=${encodeURIComponent(msg[k] || "")}`).join("&");
+    api(`/shorts-batch?${q}`, true)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
   } else if (msg.type === "playlist-status" || msg.type === "playlist-retry") {
     api(`/${msg.type}?list=${encodeURIComponent(msg.list)}`)
       .then(sendResponse)

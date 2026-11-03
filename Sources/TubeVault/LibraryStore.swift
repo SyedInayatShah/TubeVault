@@ -94,7 +94,10 @@ final class LibraryStore {
         switch item {
         // Playlist videos stay in their playlist so a long one doesn't flood All Videos.
         case .all: videos.filter { !$0.short && !isInPlaylist($0) }
-        case .shorts: videos.filter(\.short)
+        // Oldest first, so Shorts saved together scroll in the order YouTube showed them.
+        case .shorts: videos.filter(\.short).sorted {
+            ($0.queuedAt ?? $0.addedAt.timeIntervalSince1970) < ($1.queuedAt ?? $1.addedAt.timeIntervalSince1970)
+        }
         case .unsorted: videos.filter { $0.libraryID == nil && !$0.short }
         case .library(let id): inOrder(videos.filter { $0.libraryID == id }, of: library(id))
         case .downloads: []

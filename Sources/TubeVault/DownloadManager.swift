@@ -38,6 +38,10 @@ final class DownloadTask: Identifiable {
     @ObservationIgnored var thumbnailJob: Task<String?, Never>?
     /// The library (a saved playlist) the video goes into once it's downloaded.
     @ObservationIgnored var libraryID: UUID?
+    /// Part of "Save all" from the Shorts feed: no notification per Short.
+    @ObservationIgnored var batch = false
+    /// When it was queued; saved Shorts keep this order so the feed plays like YouTube's.
+    let queuedAt = Date()
 
     init(url: String) {
         self.url = url
@@ -92,7 +96,7 @@ final class DownloadManager {
     // MARK: Public API
 
     /// into: the library (a saved playlist) to put the video in. quiet: no toast, for a batch.
-    func enqueue(_ raw: String, into libraryID: UUID? = nil, quiet: Bool = false) {
+    func enqueue(_ raw: String, into libraryID: UUID? = nil, quiet: Bool = false, batch: Bool = false) {
         let link = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: link),
               let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
@@ -111,6 +115,7 @@ final class DownloadManager {
         }
         let task = DownloadTask(url: link)
         task.libraryID = libraryID
+        task.batch = batch
         tasks.append(task)
         if !quiet { notice = "Download started." }
         startQueued()
@@ -118,6 +123,51 @@ final class DownloadManager {
 
     func task(forVideo id: String) -> DownloadTask? {
         tasks.first { $0.videoID == id || URL(string: $0.url).flatMap(Self.youtubeID(from:)) == id }
+    }
+
+    /// Keeps the Mac from idle-sleeping while anything downloads, so a long "Save all" carries on.
+    @ObservationIgnored private var awake: NSObjectProtocol?
+
+    private func keepAwake() {
+        if running > 0, awake == nil {
+            awake = ProcessInfo.processInfo.beginActivity(
+                options: [.idleSystemSleepDisabled, .userInitiated], reason: "Downloading videos")
+        } else if running == 0, let awake {
+            ProcessInfo.processInfo.endActivity(awake)
+            self.awake = nil
+        }
+    }
+
+    // MARK: Save all Shorts
+
+    /// "Save all" on YouTube Shorts: the page feeds in the upcoming Shorts a few at a time (add),
+    /// and reads back how the ones it sent (ids) are doing. cancel: Shorts to drop if not started yet.
+    func shortsBatch(add: [String], ids: [String], cancel: [String]) -> [String: Any] {
+        var cancelled: [String] = []
+        for id in cancel {
+            if let task = task(forVideo: id), !task.started {
+                self.cancel(task)
+                cancelled.append(id)
+            }
+        }
+        let free = (try? Paths.support.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?
+            .volumeAvailableCapacityForImportantUsage ?? .max
+        let full = free < 2_000_000_000
+        if !full {
+            for id in add { enqueue("https://www.youtube.com/shorts/\(id)", quiet: true, batch: true) }
+        }
+        var saved = 0, pending = 0, failed = 0
+        for id in ids where !cancelled.contains(id) {
+            if store.contains(videoID: id) { saved += 1 }
+            else if let task = task(forVideo: id) { if task.isFailed { failed += 1 } else { pending += 1 } }
+            else { failed += 1 }
+        }
+        var reply: [String: Any] = ["saved": saved, "pending": pending, "failed": failed, "full": full,
+                                    "cancelled": cancelled]
+        if let current = tasks.first(where: { $0.batch && $0.state == .downloading && $0.title != $0.url }) {
+            reply["current"] = current.title
+        }
+        return reply
     }
 
     // MARK: Playlists
@@ -258,9 +308,11 @@ final class DownloadManager {
             guard running < Self.maxConcurrent else { return }
             task.started = true
             running += 1
+            keepAwake()
             Task {
                 await run(task)
                 running -= 1
+                keepAwake()
                 startQueued()
             }
         }
@@ -456,9 +508,10 @@ final class DownloadManager {
             fileName: fileURL.lastPathComponent,
             thumbnailFileName: thumbName,
             libraryID: task.libraryID,
-            addedAt: Date(),
+            addedAt: task.queuedAt,
             fileSize: size,
-            isShort: Self.isShort(task)
+            isShort: Self.isShort(task),
+            queuedAt: task.queuedAt.timeIntervalSince1970
         ))
         if let seconds = pendingPositions.removeValue(forKey: id) {
             store.setPosition(videoID: id, seconds: seconds)
@@ -471,7 +524,7 @@ final class DownloadManager {
                 Self.notifyFinished(title: "“\(library.name)” is saved: \(order.count) video\(order.count == 1 ? "" : "s")")
             }
         } else {
-            Self.notifyFinished(title: task.title)
+            if !task.batch { Self.notifyFinished(title: task.title) }
         }
     }
 

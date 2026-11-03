@@ -1,3 +1,15 @@
+## What's new in 1.5.0
+
+- **Save all Shorts from your feed.** A new **Save all** button sits under **Save** on every Short. One click saves the Shorts that come after the one you're on, the same ones your own feed would show you next, up to 400.
+  - Nothing needs to play (no sound): it reads the upcoming list from YouTube with your sign-in.
+  - It keeps TubeVault topped up a few at a time and keeps going until 400 are saved, you click **Stop**, or you close that YouTube tab.
+  - A card in the bottom-left corner shows the count and what's downloading now. **Stop** finishes the ones in progress and drops the rest.
+  - Your Mac won't idle-sleep while TubeVault is downloading. It stops on its own if the disk gets low (under 2 GB free).
+- **Shorts feed in YouTube's order.** Saved Shorts now scroll oldest-first, in the order YouTube showed them, and the feed reopens on the Short you watched last.
+- No notification for every Short during **Save all**.
+
+**Updating the extension:** TubeVault updates itself. Then in `chrome://extensions`, click **↻ reload** on the TubeVault card and refresh your YouTube tabs.
+
 ## What's new in 1.4.0
 
 - **Download whole playlists.** On any playlist there's a new ⬇ button next to loop and shuffle (or next to **Save** and **Share** on the playlist page). It opens a picker right on YouTube:
