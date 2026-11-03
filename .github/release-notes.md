@@ -1,3 +1,9 @@
+## What's new in 1.5.2
+
+- **Pause Shorts.** Clicking a Short in TubeVault now pauses and plays it (clicks weren't getting through before). Space or **K** works too, and there's a ⏸ button at the top left.
+- **Volume slider on Shorts**, like YouTube's: hover the speaker at the top left of a Short and a slider slides out. Click the speaker or press **M** to mute. The volume is remembered.
+- The buttons over a Short now have a dark background, so they're visible on bright videos.
+
 ## What's new in 1.5.0
 
 - **Save all Shorts from your feed.** A new **Save all** button sits under **Save** on every Short. One click saves the Shorts that come after the one you're on, the same ones your own feed would show you next, up to 400.

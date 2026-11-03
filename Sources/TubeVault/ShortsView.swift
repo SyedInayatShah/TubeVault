@@ -8,7 +8,10 @@ struct ShortsView: View {
     @Environment(UIState.self) private var ui
 
     @State private var current: String?
-    @State private var muted = false
+    @AppStorage("shortsMuted") private var muted = false
+    @AppStorage("shortsVolume") private var volume = 1.0
+    /// Bumped by the space bar; the Short on screen pauses or plays.
+    @State private var pauseToggle = 0
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -35,7 +38,8 @@ struct ShortsView: View {
             ScrollView(.vertical) {
                 LazyVStack(spacing: 0) {
                     ForEach(shorts) { video in
-                        ShortPage(video: video, isActive: current == video.id, muted: $muted)
+                        ShortPage(video: video, isActive: current == video.id, muted: $muted, volume: $volume,
+                                  pauseToggle: pauseToggle)
                             .padding(.top, top)
                             .frame(width: geo.size.width, height: geo.size.height + top)
                             .id(video.id)
@@ -56,6 +60,9 @@ struct ShortsView: View {
         .focusEffectDisabled()
         .onKeyPress(.downArrow) { step(1, in: shorts); return .handled }
         .onKeyPress(.upArrow) { step(-1, in: shorts); return .handled }
+        .onKeyPress(.space) { pauseToggle += 1; return .handled }
+        .onKeyPress(characters: .init(charactersIn: "kK")) { _ in pauseToggle += 1; return .handled }
+        .onKeyPress(characters: .init(charactersIn: "mM")) { _ in muted.toggle(); return .handled }
         .onAppear {
             focused = true
             // Carry on from the Short watched last, even after quitting.
@@ -99,6 +106,8 @@ private struct ShortPage: View {
     let video: Video
     let isActive: Bool
     @Binding var muted: Bool
+    @Binding var volume: Double
+    let pauseToggle: Int
 
     @Environment(LibraryStore.self) private var store
     @State private var player: AVQueuePlayer?
@@ -124,6 +133,8 @@ private struct ShortPage: View {
             if active { paused = false; player?.play() } else { player?.pause() }
         }
         .onChange(of: muted) { _, m in player?.isMuted = m }
+        .onChange(of: volume) { _, v in player?.volume = Float(v) }
+        .onChange(of: pauseToggle) { if isActive { togglePause() } }
     }
 
     private var card: some View {
@@ -132,6 +143,10 @@ private struct ShortPage: View {
             if let player {
                 BarePlayerView(player: player)
             }
+            // Clicks pass through the player view (see ClickThroughPlayerView) to this layer.
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { togglePause() }
 
             if paused {
                 Image(systemName: "play.fill")
@@ -165,12 +180,17 @@ private struct ShortPage: View {
             .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .contentShape(Rectangle())
-        .onTapGesture { togglePause() }
+        // Play/pause and volume top left, more top right, like YouTube's Shorts player.
+        .overlay(alignment: .topLeading) {
+            HStack(spacing: 8) {
+                RoundButton(symbol: paused ? "play.fill" : "pause.fill",
+                            help: paused ? "Play (space)" : "Pause (space)", small: true) { togglePause() }
+                VolumeControl(muted: $muted, volume: $volume)
+            }
+            .padding(10)
+        }
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 8) {
-                RoundButton(symbol: muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                            help: muted ? "Unmute" : "Mute", small: true) { muted.toggle() }
                 Menu {
                     VideoMenu(video: video)
                 } label: {
@@ -196,6 +216,7 @@ private struct ShortPage: View {
         let p = AVQueuePlayer()
         looper = AVPlayerLooper(player: p, templateItem: item)
         p.isMuted = muted
+        p.volume = Float(volume)
         player = p
         observer = p.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { time in
             MainActor.assumeIsolated {
@@ -221,7 +242,7 @@ private struct BarePlayerView: NSViewRepresentable {
     let player: AVPlayer
 
     func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
+        let view = ClickThroughPlayerView()
         view.controlsStyle = .none
         view.videoGravity = .resizeAspectFill
         view.player = player
@@ -231,6 +252,11 @@ private struct BarePlayerView: NSViewRepresentable {
     func updateNSView(_ view: AVPlayerView, context: Context) {
         if view.player !== player { view.player = player }
     }
+}
+
+/// Lets clicks fall through to the Short's own tap-to-pause instead of AVKit swallowing them.
+private final class ClickThroughPlayerView: AVPlayerView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 private struct RoundButton: View {
@@ -255,8 +281,67 @@ private struct RoundButtonStyle: ButtonStyle {
             .font(.system(size: small ? 13 : 16, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: small ? 32 : 44, height: small ? 32 : 44)
-            .background(Circle().fill(.white.opacity(configuration.isPressed ? 0.3 : 0.16)))
+            // Over the video it's dark so it shows on bright Shorts too; beside the feed it's light.
+            .background(Circle().fill(small
+                ? Color.black.opacity(configuration.isPressed ? 0.6 : 0.4)
+                : Color.white.opacity(configuration.isPressed ? 0.3 : 0.16)))
             .opacity(isEnabled ? 1 : 0.35)
             .contentShape(Circle())
+    }
+}
+
+/// Speaker button with a slider that slides out on hover, like YouTube's volume control.
+private struct VolumeControl: View {
+    @Binding var muted: Bool
+    @Binding var volume: Double
+    @State private var hovering = false
+
+    private var level: Double { muted ? 0 : volume }
+
+    private var symbol: String {
+        switch level {
+        case 0: "speaker.slash.fill"
+        case ..<0.34: "speaker.wave.1.fill"
+        case ..<0.67: "speaker.wave.2.fill"
+        default: "speaker.wave.3.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Button(action: toggle) {
+                Image(systemName: symbol)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(level == 0 ? "Unmute (m)" : "Mute (m)")
+
+            if hovering {
+                Slider(value: Binding(
+                    get: { level },
+                    set: { volume = $0; muted = $0 == 0 }
+                ), in: 0...1)
+                .controlSize(.small)
+                .tint(.white)
+                .frame(width: 84)
+                .padding(.trailing, 12)
+                .transition(.opacity.combined(with: .move(edge: .leading)))
+            }
+        }
+        .font(.system(size: 13, weight: .semibold))
+        .foregroundStyle(.white)
+        .frame(height: 32)
+        .background(Capsule().fill(.black.opacity(0.4)))
+        .onHover { h in withAnimation(.easeOut(duration: 0.15)) { hovering = h } }
+    }
+
+    private func toggle() {
+        if level == 0 {
+            muted = false
+            if volume == 0 { volume = 0.5 }
+        } else {
+            muted = true
+        }
     }
 }

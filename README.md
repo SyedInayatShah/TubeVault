@@ -109,7 +109,7 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Watch a playlist | Click it under **Playlists** in TubeVault's sidebar, then **Play All**. Each video moves on to the next one. |
 | Download a Short | Click **Save** above the like button. It fills up red, then shows ✓ **Saved**. Click it again to open the Short in TubeVault. |
 | Save the Shorts coming up in your feed | On any Short, click **Save all** (under **Save**). A card in the bottom-left corner counts them up to 400; click **Stop** to end early, or just close the tab. Shorts take roughly 5–30 MB each, so 400 can be several GB; it stops by itself if your Mac gets low on space. |
-| Watch your Shorts | Click **Shorts** in TubeVault's sidebar, then scroll, swipe or press **↑ ↓**. Click a Short to pause it. |
+| Watch your Shorts | Click **Shorts** in TubeVault's sidebar, then scroll, swipe or press **↑ ↓**. Click a Short (or press **space**) to pause it. Hover the speaker at the top left for a volume slider; **M** mutes. |
 | Download from a thumbnail | Right-click the thumbnail › **Download with TubeVault** |
 | Download from Safari or another app | Right-click a YouTube link › **Services › Download with TubeVault** |
 | Paste a link | Press **⌘D** in TubeVault |
