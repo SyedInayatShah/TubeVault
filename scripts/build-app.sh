@@ -16,6 +16,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/TubeVault"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp -R extension/chrome "$APP/Contents/Resources/ChromeExtension"
 
 ICONSET="$(mktemp -d)/AppIcon.iconset"
 swift scripts/make-icon.swift "$ICONSET"

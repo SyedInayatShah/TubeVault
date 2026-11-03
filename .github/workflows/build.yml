@@ -23,7 +23,8 @@ jobs:
         run: |
           mkdir -p dist
           ditto -c -k --keepParent build/TubeVault.app dist/TubeVault.zip
-          (cd extension && zip -r ../dist/TubeVault-Chrome-Extension.zip chrome)
+          mkdir -p staging && cp -R extension/chrome "staging/TubeVault Chrome Extension"
+          (cd staging && zip -r ../dist/TubeVault-Chrome-Extension.zip "TubeVault Chrome Extension")
 
       - uses: actions/upload-artifact@v4
         with:
@@ -37,4 +38,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "TubeVault $GITHUB_REF_NAME" \
-            --notes "Download **TubeVault.zip**, unzip, and drag TubeVault.app into Applications. See the README for setup."
+            --notes-file .github/release-notes.md

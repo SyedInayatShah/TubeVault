@@ -36,6 +36,9 @@ struct ContentView: View {
         .sheet(isPresented: $ui.showingAddLink) {
             AddLinkSheet()
         }
+        .sheet(isPresented: $ui.showingSetup) {
+            SetupGuideView()
+        }
         .overlay(alignment: .bottom) {
             ToastView()
         }

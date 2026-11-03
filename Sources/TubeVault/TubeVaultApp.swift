@@ -14,6 +14,7 @@ struct TubeVaultApp: App {
                 .environment(appDelegate.ui)
                 .frame(minWidth: 880, minHeight: 540)
         }
+        .defaultSize(width: 1120, height: 720)
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(after: .newItem) {
@@ -25,6 +26,12 @@ struct TubeVaultApp: App {
             CommandGroup(after: .sidebar) {
                 Button("Show Downloads Folder") { NSWorkspace.shared.open(Paths.videos) }
             }
+            CommandGroup(replacing: .help) {
+                Button("TubeVault Setup Guide") { appDelegate.ui.showingSetup = true }
+                Button("TubeVault on GitHub") {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/SyedInayatShah/TubeVault")!)
+                }
+            }
         }
     }
 }
@@ -35,6 +42,7 @@ struct TubeVaultApp: App {
 final class UIState {
     var showingAddLink = false
     var showingNewLibrary = false
+    var showingSetup = !UserDefaults.standard.bool(forKey: "hasSeenSetup")
 }
 
 @MainActor
@@ -42,8 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = LibraryStore()
     let ui = UIState()
     lazy var downloads = DownloadManager(store: store)
+    private lazy var server = LocalServer(downloads: downloads, store: store)
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        server.start()
+
         // Handles tubevault://download?url=… links sent by the browser extension.
         NSAppleEventManager.shared().setEventHandler(
             self,

@@ -1,4 +1,7 @@
-// Sends YouTube links to the TubeVault Mac app through its tubevault:// URL scheme.
+// Talks to the TubeVault Mac app: first through its local server (127.0.0.1:47823),
+// falling back to the tubevault:// URL scheme to launch the app when it isn't running.
+
+const API = "http://127.0.0.1:47823";
 
 const VIDEO_PATTERNS = [
   "*://*.youtube.com/watch*",
@@ -9,18 +12,16 @@ const VIDEO_PATTERNS = [
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
-    // Right-clicking a video link or thumbnail anywhere.
     chrome.contextMenus.create({
       id: "tubevault-link",
       title: "Download with TubeVault",
       contexts: ["link", "image"],
       targetUrlPatterns: VIDEO_PATTERNS,
     });
-    // Right-clicking on a video page itself.
     chrome.contextMenus.create({
       id: "tubevault-page",
       title: "Download this video with TubeVault",
-      contexts: ["page", "video", "frame"],
+      contexts: ["page", "frame"],
       documentUrlPatterns: VIDEO_PATTERNS,
     });
   });
@@ -28,19 +29,39 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   const url = info.menuItemId === "tubevault-link" ? info.linkUrl : info.pageUrl || tab?.url;
-  if (url) sendToApp(url, tab);
+  if (url) startDownload(url, tab?.id);
 });
 
 chrome.action.onClicked.addListener((tab) => {
   if (tab.url && /youtube\.com\/(watch|shorts|live)|youtu\.be\//.test(tab.url)) {
-    sendToApp(tab.url, tab);
+    startDownload(tab.url, tab.id);
   }
 });
+
+// Messages from the in-player button (content.js).
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  const tabId = sender.tab?.id;
+  if (msg.type === "download") {
+    startDownload(msg.url, tabId).then(sendResponse);
+  } else if (msg.type === "status") {
+    api(`/status?v=${encodeURIComponent(msg.v)}`)
+      .then(sendResponse)
+      .catch(() => sendResponse({ state: "offline" }));
+  } else if (msg.type === "open") {
+    openScheme("tubevault://open", tabId);
+    sendResponse({});
+  }
+  return true; // keep the channel open for async replies
+});
+
+async function api(path) {
+  const res = await fetch(API + path, { headers: { "X-TubeVault": "1" } });
+  return res.json();
+}
 
 function cleanURL(raw) {
   try {
     const u = new URL(raw, "https://www.youtube.com");
-    // Keep only the video id so playlists/timestamps don't leak into the download.
     const v = u.searchParams.get("v");
     if (v) return `https://www.youtube.com/watch?v=${v}`;
     return u.origin + u.pathname;
@@ -49,15 +70,26 @@ function cleanURL(raw) {
   }
 }
 
-async function sendToApp(raw, tab) {
-  const appURL = "tubevault://download?url=" + encodeURIComponent(cleanURL(raw));
+async function startDownload(raw, tabId) {
+  const url = cleanURL(raw);
+  try {
+    return await api(`/download?url=${encodeURIComponent(url)}`);
+  } catch {
+    // App isn't running: launch it with the link; it starts the download on launch.
+    await openScheme("tubevault://download?url=" + encodeURIComponent(url), tabId);
+    return { state: "starting" };
+  }
+}
+
+async function openScheme(href, tabId) {
+  if (tabId == null) return;
   try {
     await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (href) => { window.location.href = href; },
-      args: [appURL],
+      target: { tabId },
+      func: (h) => { window.location.href = h; },
+      args: [href],
     });
   } catch {
-    chrome.tabs.update(tab.id, { url: appURL });
+    chrome.tabs.update(tabId, { url: href });
   }
 }

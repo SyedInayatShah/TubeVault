@@ -61,12 +61,20 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
-            Button {
-                ui.showingNewLibrary = true
-            } label: {
-                Label("New Library", systemImage: "plus.circle")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+            HStack {
+                Button {
+                    ui.showingNewLibrary = true
+                } label: {
+                    Label("New Library", systemImage: "plus.circle")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                Button {
+                    ui.showingSetup = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                }
+                .help("Setup Guide")
             }
             .buttonStyle(.borderless)
             .padding(.horizontal, 14)

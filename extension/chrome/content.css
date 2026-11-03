@@ -1,0 +1,50 @@
+.tubevault-wrap {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  vertical-align: top;
+}
+.tubevault-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.tubevault-pill {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 0 8px;
+  font: 500 12px/1 "YouTube Sans", Roboto, Arial, sans-serif;
+  color: #fff;
+  white-space: nowrap;
+}
+.tubevault-wrap.is-active .tubevault-pill {
+  display: inline-flex;
+}
+.tubevault-track {
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+.tubevault-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: #ff0033;
+  transition: width 0.4s ease;
+}
+.tubevault-wrap.is-starting .tubevault-fill {
+  background: linear-gradient(90deg, rgba(255, 0, 51, 0.2), #ff0033, rgba(255, 0, 51, 0.2));
+  background-size: 200% 100%;
+  animation: tubevault-shimmer 1.2s linear infinite;
+}
+.tubevault-label {
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes tubevault-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: 0 0; }
+}
