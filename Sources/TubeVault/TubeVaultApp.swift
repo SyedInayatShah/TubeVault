@@ -2,7 +2,15 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
+/// Chrome runs this same binary as its native messaging host; otherwise start the app normally.
 @main
+enum Launcher {
+    static func main() {
+        if NativeHost.isRequested { NativeHost.run() }
+        TubeVaultApp.main()
+    }
+}
+
 struct TubeVaultApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
@@ -24,7 +32,7 @@ struct TubeVaultApp: App {
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }
             CommandGroup(after: .sidebar) {
-                Button("Show Downloads Folder") { NSWorkspace.shared.open(Paths.videos) }
+                Button("Show Video Files in Finder") { NSWorkspace.shared.open(Paths.videos) }
             }
             CommandGroup(replacing: .help) {
                 Button("TubeVault Setup Guide") { appDelegate.ui.showingSetup = true }
@@ -43,6 +51,8 @@ final class UIState {
     var showingAddLink = false
     var showingNewLibrary = false
     var showingSetup = !UserDefaults.standard.bool(forKey: "hasSeenSetup")
+    /// Set to show a video in the player (paused at its saved position).
+    var openVideoID: String?
 }
 
 @MainActor
@@ -66,12 +76,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = self
+        NativeHost.installManifests()
         NSUpdateDynamicServices()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         store.pruneMissingFiles()
+        // Paused a downloaded video on YouTube? Pick up right there.
+        if let id = downloads.resumeRequest, store.contains(videoID: id) {
+            downloads.resumeRequest = nil
+            ui.openVideoID = id
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -100,7 +116,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleIncoming(_ url: URL) {
         guard url.scheme == "tubevault" else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        if let link = items.first(where: { $0.name == "url" })?.value {
+        let value = { (name: String) in items.first(where: { $0.name == name })?.value }
+
+        if url.host == "open" {
+            // tubevault://open?v=<id>&t=<seconds> from the "Open TubeVault" button on YouTube.
+            guard let id = value("v"), store.contains(videoID: id) else { return }
+            if let t = value("t").flatMap(Double.init) {
+                store.setPosition(videoID: id, seconds: t)
+            }
+            downloads.resumeRequest = nil
+            ui.openVideoID = id
+            NSApp.activate(ignoringOtherApps: true)
+        } else if let link = value("url") {
             downloads.enqueue(link)
         }
     }

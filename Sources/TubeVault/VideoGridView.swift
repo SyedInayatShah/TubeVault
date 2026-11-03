@@ -120,6 +120,18 @@ struct VideoCard: View {
                         .padding(8)
                 }
             }
+            .overlay(alignment: .bottom) {
+                // Watched-so-far bar, like YouTube's.
+                if let t = video.resumeAt, let d = video.duration, d > 0 {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(.white.opacity(0.35))
+                            Rectangle().fill(Color.red).frame(width: geo.size.width * min(t / d, 1))
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .shadow(color: .black.opacity(hovering ? 0.25 : 0.1), radius: hovering ? 12 : 4, y: hovering ? 6 : 2)
 

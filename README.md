@@ -26,11 +26,13 @@
 ## ✨ Features
 
 - **Download button in the YouTube player.** It sits in the video's bottom control bar, next to the subtitles and settings icons, with a live progress bar beside it.
+- **Open TubeVault button.** When a download finishes, the player button becomes **Open TubeVault**. Clicking it opens the app at that video.
+- **Pick up where you paused.** Pause a video on YouTube that you've downloaded, open TubeVault, and the video is waiting, paused at the same second.
 - **Offline library.** Open TubeVault from your Dock to see only your downloaded videos. It works with no internet.
 - **Downloading tab** with progress, speed, time left, cancel and retry.
 - **Libraries.** Make your own collections and drag videos into them.
 - **Built-in player** with full screen and Picture in Picture.
-- Files are plain `.mp4`s in **Downloads › TubeVault**, so you can also open them in Finder.
+- Videos are stored inside TubeVault’s own app folder, not in Downloads. To see the `.mp4` files, use **View › Show Video Files in Finder**.
 
 ---
 
@@ -76,7 +78,7 @@ This removes the "downloaded from the internet" flag macOS adds to files from th
 The extension isn't on the Chrome Web Store, so you load it with Chrome's **Developer mode**.
 
 1. Download **[TubeVault-Chrome-Extension.zip](https://github.com/SyedInayatShah/TubeVault/releases/latest/download/TubeVault-Chrome-Extension.zip)** and unzip it. You'll get a folder called **TubeVault Chrome Extension**. Move it somewhere permanent, like your Documents folder. Chrome loads it from there, so don't delete it.
-   > Or, in TubeVault, open **Help › TubeVault Setup Guide** and click **Save Extension**. That puts the folder in **Downloads › TubeVault** for you.
+   > Or, in TubeVault, open **Help › TubeVault Setup Guide** and click **Save Extension**. That puts a **TubeVault Chrome Extension** folder in your **Documents** for you.
 2. In Chrome, type **`chrome://extensions`** in the address bar and press Return.
 3. **Turn on Developer mode** with the toggle in the **top-right corner** of the page. Three new buttons appear on the left.
 4. Click **Load unpacked**, select the **TubeVault Chrome Extension** folder, and click **Select**.
@@ -94,7 +96,9 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 
 | Want to… | Do this |
 | --- | --- |
-| Download the video you're watching | Click the **⬇** icon in the YouTube player's bottom bar. A red progress bar shows next to it, and it turns into a ✓ when saved. |
+| Download the video you're watching | Click the **⬇** icon in the YouTube player's bottom bar. A red progress bar shows next to it. |
+| Watch it in TubeVault | When it's saved, click the red **Open TubeVault** button in the player bar. The app opens the video paused at the same spot. |
+| Continue later | Pause on YouTube, then open TubeVault from the Dock. It jumps to that video, paused where you stopped. |
 | Download from a thumbnail | Right-click the thumbnail › **Download with TubeVault** |
 | Download from Safari or another app | Right-click a YouTube link › **Services › Download with TubeVault** |
 | Paste a link | Press **⌘D** in TubeVault |
@@ -102,11 +106,13 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Organise | Click **New Library**, then drag videos onto it (or right-click › **Move to Library**) |
 | Check progress | Click **Downloading** in the sidebar |
 
-Downloads keep running if you close the window. Deleting a video in Finder also removes it from the library.
+Downloads keep running if you close the window. To delete a video, right-click it › **Delete Download**.
 
 ### Updating the extension
 
 After updating, open `chrome://extensions` and click the **↻ reload** arrow on the TubeVault card.
+
+> **Upgrading from 1.1 or earlier?** Version 1.2 gives the extension a permanent ID so it can talk to the app directly. Remove the old TubeVault card in `chrome://extensions`, then **Load unpacked** the new folder once.
 
 ---
 
@@ -129,11 +135,12 @@ Then load the `extension/chrome` folder in Chrome as described above.
 | --- | --- |
 | SwiftUI app | `Sources/TubeVault` |
 | Download engine (runs yt-dlp, reads progress) | `Sources/TubeVault/DownloadManager.swift` |
-| Local server the extension talks to (`127.0.0.1:47823`, only accepts the extension) | `Sources/TubeVault/LocalServer.swift` |
+| Bridge Chrome uses to talk to the app; opens TubeVault if it's closed | `Sources/TubeVault/NativeHost.swift` |
+| Local server for progress and positions (`127.0.0.1:47823`, only accepts the extension) | `Sources/TubeVault/LocalServer.swift` |
 | In-app setup guide | `Sources/TubeVault/SetupGuideView.swift` |
 | Chrome extension (player button, right-click menu) | `extension/chrome` |
 | Library data | `~/Library/Application Support/TubeVault/library.json` |
-| Video files | `~/Downloads/TubeVault/` |
+| Video files and thumbnails | `~/Library/Application Support/TubeVault/Videos` and `…/Thumbnails` |
 | CI build and releases | `.github/workflows/build.yml`. Push a `v*` tag to publish a release. |
 
 Videos download as H.264/AAC MP4 (up to 1080p) so they play natively on any Mac.

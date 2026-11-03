@@ -63,8 +63,12 @@ final class DownloadManager {
     private(set) var tasks: [DownloadTask] = []
     /// Short message shown as a toast in the main window.
     var notice: String?
+    /// Video paused on YouTube most recently; opened at that spot when the app is next brought forward.
+    var resumeRequest: String?
 
     private let store: LibraryStore
+    /// Pause positions reported for videos that are still downloading.
+    private var pendingPositions: [String: Double] = [:]
 
     init(store: LibraryStore) {
         self.store = store
@@ -99,6 +103,16 @@ final class DownloadManager {
         tasks.append(task)
         notice = "Download started."
         Task { await run(task) }
+    }
+
+    /// Called when the video is paused on YouTube.
+    func recordPosition(videoID: String, seconds: Double) {
+        if store.contains(videoID: videoID) {
+            store.setPosition(videoID: videoID, seconds: seconds)
+        } else {
+            pendingPositions[videoID] = seconds
+        }
+        resumeRequest = videoID
     }
 
     func retry(_ task: DownloadTask) {
@@ -255,6 +269,9 @@ final class DownloadManager {
             addedAt: Date(),
             fileSize: size
         ))
+        if let seconds = pendingPositions.removeValue(forKey: id) {
+            store.setPosition(videoID: id, seconds: seconds)
+        }
         tasks.removeAll { $0.id == task.id }
         Self.notifyFinished(title: task.title)
     }

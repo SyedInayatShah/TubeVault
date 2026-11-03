@@ -1,22 +1,48 @@
 {
   "manifest_version": 3,
   "name": "TubeVault – Download for Offline",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Adds a download button to the YouTube player that saves the video to the TubeVault Mac app for offline viewing.",
-  "permissions": ["contextMenus", "scripting", "activeTab"],
-  "host_permissions": ["*://*.youtube.com/*", "*://youtu.be/*", "http://127.0.0.1:47823/*"],
-  "background": { "service_worker": "background.js" },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArPnWuPh03n9rmhAsa6evEpqyFpGwJ0vbVrHZ6Uq4nXxcnKGKcqXOXHOsc311b9ZfRFLMJf3d4HpLqY6d7mmxdvN40hzwti3QL7SqxMWjV2HUuixWISEeGnJsyCX3oKug6jVmqaK3qdSB0yz1qZLO7cFcK2ojkgqZ7aNhfzyByfzPrFXq5I/KuRc3YmD/+iqYsQZRL7u9aElJp26wNp6mAeOpxLhhqyKI1aWSYlJ39GBJrNh2kfL44foZEB8ks5AD9xcKfi4CVVp++42LHcvIffZM8I9pvCiVGRLiR9drQu80cDkPZkWcRCk91PlecEt2Y51XUQlp9XtKvCT6u+y5hQIDAQAB",
+  "permissions": [
+    "contextMenus",
+    "scripting",
+    "activeTab",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "*://youtu.be/*",
+    "http://127.0.0.1:47823/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/*"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "matches": [
+        "*://www.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "action": {
     "default_title": "Download this video with TubeVault",
-    "default_icon": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
   },
-  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" }
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  }
 }

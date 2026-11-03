@@ -23,6 +23,8 @@ struct ContentView: View {
             }
         }
         .onChange(of: selection) { path.removeAll() }
+        .onChange(of: ui.openVideoID) { openRequestedVideo() }
+        .onAppear { openRequestedVideo() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -41,6 +43,19 @@ struct ContentView: View {
         }
         .overlay(alignment: .bottom) {
             ToastView()
+        }
+    }
+
+    /// Jumps to the player for a video requested from YouTube (re-pushed so it seeks again).
+    private func openRequestedVideo() {
+        guard let id = ui.openVideoID, let video = store.video(id: id) else { return }
+        ui.openVideoID = nil
+        ui.showingSetup = false
+        if selection != .all { selection = .all }
+        path.removeAll()
+        Task {
+            try? await Task.sleep(for: .milliseconds(80))
+            path = [video]
         }
     }
 
@@ -78,7 +93,7 @@ struct AddLinkSheet: View {
                     .foregroundStyle(.red)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Download a Video").font(.headline)
-                    Text("Paste a YouTube link. It’ll be saved to Downloads › TubeVault.")
+                    Text("Paste a YouTube link. It’ll be saved to your TubeVault library for offline viewing.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }

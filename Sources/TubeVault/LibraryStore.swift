@@ -14,6 +14,7 @@ final class LibraryStore {
 
     init() {
         Paths.ensure()
+        Paths.migrateLegacyFolder()
         load()
     }
 
@@ -74,6 +75,18 @@ final class LibraryStore {
             try? FileManager.default.removeItem(at: thumb)
         }
         videos.removeAll { $0.id == video.id }
+        save()
+    }
+
+    func video(id: String) -> Video? {
+        videos.first { $0.id == id }
+    }
+
+    /// Remembers the playback position; clears it near the start or end.
+    func setPosition(videoID: String, seconds: Double) {
+        guard let i = videos.firstIndex(where: { $0.id == videoID }) else { return }
+        let duration = videos[i].duration ?? .infinity
+        videos[i].resumeAt = (seconds < 2 || seconds > duration - 3) ? nil : seconds
         save()
     }
 

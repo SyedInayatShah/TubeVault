@@ -1,5 +1,6 @@
-// Talks to the TubeVault Mac app: first through its local server (127.0.0.1:47823),
-// falling back to the tubevault:// URL scheme to launch the app when it isn't running.
+// Talks to the TubeVault Mac app. First through Chrome native messaging (the app's built-in helper,
+// which also launches TubeVault if it's closed), then directly to its local server (127.0.0.1:47823),
+// and finally the tubevault:// URL scheme.
 
 const API = "http://127.0.0.1:47823";
 
@@ -42,22 +43,33 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const tabId = sender.tab?.id;
   if (msg.type === "download") {
-    // The in-player button launches the app itself (it has the click), so no fallback here.
-    api(`/download?url=${encodeURIComponent(cleanURL(msg.url))}`)
+    // The native host opens TubeVault if needed; "offline" lets the button offer to open it.
+    api(`/download?url=${encodeURIComponent(cleanURL(msg.url))}`, true)
       .then(sendResponse)
       .catch(() => sendResponse({ state: "offline" }));
   } else if (msg.type === "status") {
     api(`/status?v=${encodeURIComponent(msg.v)}`)
       .then(sendResponse)
       .catch(() => sendResponse({ state: "offline" }));
-  } else if (msg.type === "open") {
-    openScheme("tubevault://open", tabId);
-    sendResponse({});
+  } else if (msg.type === "position") {
+    api(`/position?v=${encodeURIComponent(msg.v)}&t=${encodeURIComponent(msg.t)}`)
+      .then(sendResponse)
+      .catch(() => sendResponse({}));
   }
   return true; // keep the channel open for async replies
 });
 
-async function api(path) {
+const HOST = "com.tubevault.host";
+
+// launch: open TubeVault if it isn't running (only for actions the user clicked).
+async function api(path, launch = false) {
+  try {
+    const reply = await chrome.runtime.sendNativeMessage(HOST, { path, launch });
+    if (reply && !reply.error) return reply;
+    if (reply?.state === "offline") throw new Error("offline");
+  } catch (e) {
+    console.warn("TubeVault native messaging:", e?.message || e);
+  }
   const res = await fetch(API + path, { headers: { "X-TubeVault": "1" } });
   return res.json();
 }
@@ -76,7 +88,7 @@ function cleanURL(raw) {
 async function startDownload(raw, tabId) {
   const url = cleanURL(raw);
   try {
-    return await api(`/download?url=${encodeURIComponent(url)}`);
+    return await api(`/download?url=${encodeURIComponent(url)}`, true);
   } catch {
     // App isn't running: launch it with the link; it starts the download on launch.
     await openScheme("tubevault://download?url=" + encodeURIComponent(url), tabId);

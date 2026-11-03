@@ -79,7 +79,7 @@ struct SetupGuideView: View {
 
     private var chromeSection: some View {
         GuideCard(number: 2, title: "Add “Download with TubeVault” to Chrome", symbol: "cursorarrow.click.2") {
-            StepRow(n: 1, text: "Save the extension to your Downloads folder.") {
+            StepRow(n: 1, text: "Save the extension to your Documents folder.") {
                 Button(extensionFolder == nil ? "Save Extension" : "Saved ✓") {
                     extensionFolder = ChromeExtension.install()
                 }
@@ -88,9 +88,9 @@ struct SetupGuideView: View {
                 Button("Open in Chrome") { ChromeExtension.openExtensionsPage() }
             }
             StepRow(n: 3, text: "Turn on **Developer mode** with the switch in the **top-right corner** of that page. New buttons appear on the left.")
-            StepRow(n: 4, text: "Click **Load unpacked**, go to **Downloads › TubeVault**, select the **Chrome Extension** folder and click **Select**.")
-            StepRow(n: 5, text: "Open any YouTube video and click the **⬇ download icon** in the player’s bottom bar, next to the settings ⚙ icon. A red progress bar shows next to it, and it turns into a ✓ when the video is saved.")
-            Label("You can also right-click a thumbnail › Download with TubeVault. After updating TubeVault, click the ↻ reload arrow on its card in chrome://extensions.", systemImage: "lightbulb")
+            StepRow(n: 4, text: "Click **Load unpacked**, go to **Documents**, select the **TubeVault Chrome Extension** folder and click **Select**.")
+            StepRow(n: 5, text: "Open any YouTube video and click the **⬇ download icon** in the player’s bottom bar, next to the settings ⚙ icon. A red progress bar shows next to it. When it’s saved, the button becomes **Open TubeVault**. Click it to watch here, paused at the same spot.")
+            Label("Already had an older TubeVault extension? Remove its card in chrome://extensions first, then load the new folder. After future updates, click Save Extension again and the ↻ reload arrow on the card.", systemImage: "lightbulb")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -212,9 +212,10 @@ private struct StatusPill: View {
 }
 
 enum ChromeExtension {
-    static let folder = Paths.videos.appendingPathComponent("Chrome Extension", isDirectory: true)
+    static let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("TubeVault Chrome Extension", isDirectory: true)
 
-    /// Copies the extension bundled inside the app to ~/Downloads/TubeVault/Chrome Extension.
+    /// Copies the extension bundled inside the app to ~/Documents/TubeVault Chrome Extension.
     @discardableResult
     static func install() -> URL? {
         guard let source = Bundle.main.url(forResource: "ChromeExtension", withExtension: nil) else { return nil }

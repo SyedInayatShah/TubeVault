@@ -43,6 +43,19 @@
 .tubevault-wrap.is-message .tubevault-track {
   display: none;
 }
+.tubevault-wrap.is-message .tubevault-pill {
+  cursor: pointer;
+}
+/* Saved: a real "Open TubeVault" button in the player bar. */
+.tubevault-wrap.is-done .tubevault-pill {
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: #ff0033;
+  font-weight: 600;
+}
+.tubevault-wrap.is-done .tubevault-pill:hover {
+  background: #e6002e;
+}
 .tubevault-label {
   min-width: 30px;
   font-variant-numeric: tabular-nums;

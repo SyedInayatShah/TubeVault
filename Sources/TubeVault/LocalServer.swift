@@ -5,7 +5,7 @@ import Network
 /// Only requests carrying the `X-TubeVault` header (which web pages can't send cross-origin) are accepted.
 @MainActor
 final class LocalServer {
-    static let port: UInt16 = 47823
+    static let port = ServerConfig.port
 
     private let downloads: DownloadManager
     private let store: LibraryStore
@@ -86,6 +86,12 @@ final class LocalServer {
             return ("200 OK", status(for: query["v"] ?? DownloadManager.youtubeID(from: URL(string: link)!) ?? ""))
         case "/status":
             return ("200 OK", status(for: query["v"] ?? ""))
+        case "/position":
+            guard let id = query["v"], !id.isEmpty, let seconds = Double(query["t"] ?? "") else {
+                return ("400 Bad Request", ["error": "missing v or t"])
+            }
+            downloads.recordPosition(videoID: id, seconds: seconds)
+            return ("200 OK", ["ok": true])
         default:
             return ("404 Not Found", ["error": "not found"])
         }

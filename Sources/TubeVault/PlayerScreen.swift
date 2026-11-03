@@ -49,10 +49,18 @@ struct PlayerScreen: View {
         .onAppear {
             let p = AVPlayer(url: store.fileURL(for: video))
             player = p
-            p.play()
+            // Saved spot (from here or a pause on YouTube): open paused right there.
+            if let t = store.video(id: video.id)?.resumeAt {
+                p.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+            } else {
+                p.play()
+            }
         }
         .onDisappear {
-            player?.pause()
+            if let p = player {
+                p.pause()
+                store.setPosition(videoID: video.id, seconds: p.currentTime().seconds)
+            }
             player = nil
         }
     }
