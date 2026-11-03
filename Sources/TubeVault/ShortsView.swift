@@ -12,6 +12,7 @@ struct ShortsView: View {
     @AppStorage("shortsVolume") private var volume = 1.0
     /// Bumped by the space bar; the Short on screen pauses or plays.
     @State private var pauseToggle = 0
+    @State private var flick = FlickScroller()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -48,11 +49,15 @@ struct ShortsView: View {
                 .scrollTargetLayout()
             }
             .contentMargins(0, for: .scrollContent)
+            // Scrolling is handled by FlickScroller: a small flick moves one Short, like YouTube.
+            .scrollDisabled(true)
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $current)
             .scrollIndicators(.hidden)
             .ignoresSafeArea(.container, edges: .top)
             .overlay(alignment: .trailing) { arrows(shorts) }
+            .onAppear { flick.frame = geo.frame(in: .global) }
+            .onChange(of: geo.frame(in: .global)) { _, frame in flick.frame = frame }
         }
         .background(Color.black)
         .focusable()
@@ -64,6 +69,8 @@ struct ShortsView: View {
         .onKeyPress(characters: .init(charactersIn: "kK")) { _ in pauseToggle += 1; return .handled }
         .onKeyPress(characters: .init(charactersIn: "mM")) { _ in muted.toggle(); return .handled }
         .onAppear {
+            flick.onStep = { step($0, in: shorts) }
+            flick.start()
             focused = true
             // Carry on from the Short watched last, even after quitting.
             let last = ui.currentShort ?? UserDefaults.standard.string(forKey: "lastShort")
@@ -76,6 +83,8 @@ struct ShortsView: View {
         .onChange(of: ui.currentShort) { _, id in
             if let id { withAnimation { current = id } }
         }
+        .onChange(of: shorts.map(\.id)) { flick.onStep = { step($0, in: shorts) } }
+        .onDisappear { flick.stop() }
         .onChange(of: current) { _, id in
             ui.currentShort = id
             if let id { UserDefaults.standard.set(id, forKey: "lastShort") }
@@ -308,7 +317,8 @@ private struct VolumeControl: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        // The pill grows to the right out of the speaker button; the slider is revealed inside it.
+        HStack(spacing: 0) {
             Button(action: toggle) {
                 Image(systemName: symbol)
                     .frame(width: 32, height: 32)
@@ -317,23 +327,27 @@ private struct VolumeControl: View {
             .buttonStyle(.plain)
             .help(level == 0 ? "Unmute (m)" : "Mute (m)")
 
-            if hovering {
-                Slider(value: Binding(
-                    get: { level },
-                    set: { volume = $0; muted = $0 == 0 }
-                ), in: 0...1)
-                .controlSize(.small)
-                .tint(.white)
-                .frame(width: 84)
-                .padding(.trailing, 12)
-                .transition(.opacity.combined(with: .move(edge: .leading)))
-            }
+            Slider(value: Binding(
+                get: { level },
+                set: { volume = $0; muted = $0 == 0 }
+            ), in: 0...1)
+            .controlSize(.small)
+            .tint(.white)
+            .frame(width: 80)
+            .padding(.leading, 2)
+            .padding(.trailing, 12)
+            .opacity(hovering ? 1 : 0)
+            .frame(width: hovering ? 94 : 0, alignment: .leading)
+            .clipped()
+            .allowsHitTesting(hovering)
         }
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(.white)
         .frame(height: 32)
         .background(Capsule().fill(.black.opacity(0.4)))
-        .onHover { h in withAnimation(.easeOut(duration: 0.15)) { hovering = h } }
+        .clipShape(Capsule())
+        .fixedSize()
+        .onHover { h in withAnimation(.easeOut(duration: 0.18)) { hovering = h } }
     }
 
     private func toggle() {
@@ -343,5 +357,64 @@ private struct VolumeControl: View {
         } else {
             muted = true
         }
+    }
+}
+
+/// Turns a scroll into exactly one Short forward or back: a small trackpad flick or one notch of a
+/// mouse wheel is enough, and the rest of that gesture (and its momentum) is swallowed.
+@MainActor
+private final class FlickScroller {
+    var onStep: (Int) -> Void = { _ in }
+    /// The feed's area in the window (SwiftUI global coordinates, top-left origin).
+    var frame: CGRect = .zero
+
+    private var monitor: Any?
+    private var accumulated: CGFloat = 0
+    private var stepped = false
+    private var lastStep = Date.distantPast
+
+    func start() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let self, self.covers(event) else { return event }
+                self.handle(event)
+                return nil
+            }
+        }
+    }
+
+    func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+    }
+
+    private func covers(_ event: NSEvent) -> Bool {
+        guard let window = event.window, let content = window.contentView, window.isKeyWindow || window.isMainWindow
+        else { return false }
+        let p = event.locationInWindow
+        return frame.contains(CGPoint(x: p.x, y: content.frame.height - p.y))
+    }
+
+    private func handle(_ event: NSEvent) {
+        let trackpad = event.hasPreciseScrollingDeltas
+        if event.phase == .began || event.phase == .mayBegin {
+            accumulated = 0
+            stepped = false
+        }
+        if !event.momentumPhase.isEmpty { return } // the glide after a flick
+        if trackpad && stepped {
+            if event.phase == .ended || event.phase == .cancelled { stepped = false }
+            return
+        }
+        // A mouse wheel sends separate notches: one move per short burst.
+        if !trackpad && Date().timeIntervalSince(lastStep) < 0.35 { return }
+
+        accumulated += event.scrollingDeltaY
+        guard abs(accumulated) >= (trackpad ? 14 : 1) else { return }
+        onStep(accumulated < 0 ? 1 : -1)
+        accumulated = 0
+        stepped = true
+        lastStep = Date()
     }
 }

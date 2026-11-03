@@ -1,3 +1,9 @@
+## What's new in 1.5.3
+
+- **Scroll Shorts like YouTube.** A small flick on the trackpad, or one notch of the mouse wheel, moves to the next or previous Short. No more dragging halfway down.
+- **Save all skips ads.** Sponsored Shorts in your feed are no longer saved.
+- **Volume slider opens from the speaker button**, growing to the right inside its pill instead of sliding in from the edge of the video.
+
 ## What's new in 1.5.2
 
 - **Pause Shorts.** Clicking a Short in TubeVault now pauses and plays it (clicks weren't getting through before). Space or **K** works too, and there's a ⏸ button at the top left.

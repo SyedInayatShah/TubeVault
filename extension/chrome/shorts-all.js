@@ -112,7 +112,11 @@
     if (!res.ok) throw new Error(`YouTube answered ${res.status}`);
     const json = await res.json();
     feed.token = json.continuationEndpoint?.continuationCommand?.token || null;
-    return (json.entries || []).map((e) => e.command?.reelWatchEndpoint?.videoId).filter(Boolean);
+    // Sponsored Shorts (ads) are marked isAd; leave them out.
+    return (json.entries || [])
+      .map((e) => e.command?.reelWatchEndpoint)
+      .filter((ep) => ep?.videoId && !ep.adClientParams?.isAd)
+      .map((ep) => ep.videoId);
   }
 
   // MARK: The job
