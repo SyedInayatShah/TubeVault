@@ -28,6 +28,10 @@
 - **Download button in the YouTube player.** It sits in the video's bottom control bar, next to the subtitles and settings icons, with a live progress bar beside it.
 - **Open TubeVault button.** When a download finishes, the player button becomes **Open TubeVault**. Clicking it opens the app at that video.
 - **Pick up where you paused.** Pause a video on YouTube that you've downloaded, open TubeVault, and the video is waiting, paused at the same second.
+- **Best quality, always.** Each video downloads at the highest resolution YouTube offers, up to 4K.
+- **YouTube Shorts.** A ⬇ button sits at the top right of the Shorts player, next to ⋮. Saved Shorts get their own **Shorts** feed in the app: one at a time, looping, scroll or press ↑ ↓ to move between them.
+- **Resume anywhere.** Close a video in TubeVault and it continues from the same spot next time.
+- **Automatic updates.** When a new version is released, TubeVault shows a notification and a banner. Click **Update Now** and it installs itself and restarts.
 - **Offline library.** Open TubeVault from your Dock to see only your downloaded videos. It works with no internet.
 - **Downloading tab** with progress, speed, time left, cancel and retry.
 - **Libraries.** Make your own collections and drag videos into them.
@@ -99,6 +103,8 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 | Download the video you're watching | Click the **⬇** icon in the YouTube player's bottom bar. A red progress bar shows next to it. |
 | Watch it in TubeVault | When it's saved, click the red **Open TubeVault** button in the player bar. The app opens the video paused at the same spot. |
 | Continue later | Pause on YouTube, then open TubeVault from the Dock. It jumps to that video, paused where you stopped. |
+| Download a Short | On a Short, click the **⬇** at the top right of the player, next to **⋮** |
+| Watch your Shorts | Click **Shorts** in TubeVault's sidebar, then scroll, swipe or press **↑ ↓**. Click a Short to pause it. |
 | Download from a thumbnail | Right-click the thumbnail › **Download with TubeVault** |
 | Download from Safari or another app | Right-click a YouTube link › **Services › Download with TubeVault** |
 | Paste a link | Press **⌘D** in TubeVault |
@@ -108,9 +114,11 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 
 Downloads keep running if you close the window. To delete a video, right-click it › **Delete Download**.
 
-### Updating the extension
+### Updating
 
-After updating, open `chrome://extensions` and click the **↻ reload** arrow on the TubeVault card.
+TubeVault checks for new versions on its own (also **Help › Check for Updates…**). Click **Update Now** in the notification or the banner and it installs itself.
+
+If you saved the extension from TubeVault's setup guide (**Documents › TubeVault Chrome Extension**), the update refreshes that folder too. Chrome uses the new version after a restart, or right away if you click **↻ reload** on the TubeVault card in `chrome://extensions`.
 
 > **Upgrading from 1.1 or earlier?** Version 1.2 gives the extension a permanent ID so it can talk to the app directly. Remove the old TubeVault card in `chrome://extensions`, then **Load unpacked** the new folder once.
 

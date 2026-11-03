@@ -28,10 +28,13 @@ final class DownloadTask: Identifiable {
 
     @ObservationIgnored var process: Process?
     @ObservationIgnored var cancelled = false
+    @ObservationIgnored var started = false
     @ObservationIgnored var parts = 1
     @ObservationIgnored var partIndex = 0
     @ObservationIgnored var lastFraction = 0.0
     @ObservationIgnored var outputPath: String?
+    @ObservationIgnored var height: Int?
+    @ObservationIgnored var width: Int?
     @ObservationIgnored var thumbnailJob: Task<String?, Never>?
 
     init(url: String) {
@@ -53,6 +56,8 @@ final class DownloadTask: Identifiable {
         partIndex = 0
         lastFraction = 0
         outputPath = nil
+        height = nil
+        width = nil
         cancelled = false
     }
 }
@@ -102,7 +107,24 @@ final class DownloadManager {
         let task = DownloadTask(url: link)
         tasks.append(task)
         notice = "Download started."
-        Task { await run(task) }
+        startQueued()
+    }
+
+    /// YouTube rate-limits (and serves low quality to) many simultaneous downloads, so a few run at once.
+    private static let maxConcurrent = 3
+    @ObservationIgnored private var running = 0
+
+    private func startQueued() {
+        for task in tasks where !task.started && !task.cancelled {
+            guard running < Self.maxConcurrent else { return }
+            task.started = true
+            running += 1
+            Task {
+                await run(task)
+                running -= 1
+                startQueued()
+            }
+        }
     }
 
     /// Called when the video is paused on YouTube.
@@ -117,7 +139,8 @@ final class DownloadManager {
 
     func retry(_ task: DownloadTask) {
         task.reset()
-        Task { await run(task) }
+        task.started = false
+        startQueued()
     }
 
     func cancel(_ task: DownloadTask, removePartialFiles: Bool = true) {
@@ -140,8 +163,9 @@ final class DownloadManager {
 
     // MARK: Running yt-dlp
 
+    /// retried: a second attempt after YouTube blocked or throttled the first.
     /// cookiesFrom: a browser to borrow the YouTube sign-in from, used when YouTube asks to "confirm you're not a bot".
-    private func run(_ task: DownloadTask, cookiesFrom browser: String? = nil) async {
+    private func run(_ task: DownloadTask, retried: Bool = false, cookiesFrom browser: String? = nil) async {
         guard let ytdlp = Tools.path(for: "yt-dlp") else {
             task.state = .failed("yt-dlp isn’t installed. In Terminal run: brew install yt-dlp ffmpeg")
             return
@@ -151,18 +175,20 @@ final class DownloadManager {
         var args = [
             "--no-playlist",
             "--quiet", "--progress", "--newline", "--no-colors",
-            // Prefer H.264 + AAC so AVKit can play the file natively.
-            "-f", "bv*+ba/b",
-            "-S", "vcodec:h264,res:1080,acodec:m4a",
+            // Best quality available: highest resolution, then frame rate, then the better codec (VP9 over H.264).
+            // AV1 is skipped (Macs before M3 can't decode it) and so is HDR, which looks washed out in AVKit.
+            "-f", "bv*[vcodec!^=av01][dynamic_range=SDR]+ba[ext=m4a]/bv*[vcodec!^=av01]+ba/b",
+            "-S", "res,fps,vcodec,acodec:m4a",
             "--merge-output-format", "mp4",
             "--progress-template",
             "download:TVP %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(progress.eta)s",
-            "--print", "before_dl:TVINFO %(.{id,title,channel,uploader,duration,thumbnail})j",
+            "--print", "before_dl:TVINFO %(.{id,title,channel,uploader,duration,thumbnail,height,width})j",
             "--print", "before_dl:TVPARTS %(requested_formats.:.format_id)j",
             "--print", "after_move:TVFILE %(filepath)s",
             "-o", Paths.videos.path + "/%(title).80B [%(id)s].%(ext)s",
-            // The mobile web client often gets through when YouTube bot-checks the default ones.
-            "--extractor-args", "youtube:player_client=default,mweb",
+            // When YouTube bot-checks the default clients, the embedded player still offers full quality
+            // and the mobile web client at least a 360p fallback.
+            "--extractor-args", "youtube:player_client=default,web_embedded,mweb",
         ]
         if let browser {
             args += ["--cookies-from-browser", browser]
@@ -193,13 +219,24 @@ final class DownloadManager {
         guard result.status == 0, let path = task.outputPath,
               FileManager.default.fileExists(atPath: path) else {
             let message = Self.errorMessage(from: result.stderr)
-            if browser == nil, message.contains("not a bot"), let signedIn = Tools.cookieBrowser {
+            if !retried, message.contains("not a bot"), let signedIn = Tools.cookieBrowser {
                 // Retry once as the user's signed-in browser (macOS may ask to allow Keychain access).
                 task.reset()
-                return await run(task, cookiesFrom: signedIn)
+                return await run(task, retried: true, cookiesFrom: signedIn)
             }
             task.state = .failed(message)
             return
+        }
+        // Only a low-quality copy got past YouTube's bot check or rate limit: wait a moment and fetch it again,
+        // as the signed-in browser if YouTube asked for that.
+        let blocked = ["not a bot", "429", "PO Token"].contains { result.stderr.contains($0) }
+        if !retried, (task.height ?? .max) < 720, blocked {
+            try? FileManager.default.removeItem(atPath: path)
+            task.reset()
+            try? await Task.sleep(for: .seconds(8))
+            if task.cancelled { return }
+            let signIn = result.stderr.contains("not a bot") ? Tools.cookieBrowser : nil
+            return await run(task, retried: true, cookiesFrom: signIn)
         }
         await finish(task, filePath: path)
     }
@@ -227,6 +264,8 @@ final class DownloadManager {
         task.title = obj["title"] as? String ?? task.title
         task.channel = (obj["channel"] as? String) ?? (obj["uploader"] as? String) ?? ""
         task.duration = obj["duration"] as? Double
+        task.height = obj["height"] as? Int
+        task.width = obj["width"] as? Int
         task.thumbnail = (obj["thumbnail"] as? String).flatMap(URL.init(string:))
         task.state = .downloading
 
@@ -279,7 +318,8 @@ final class DownloadManager {
             thumbnailFileName: thumbName,
             libraryID: nil,
             addedAt: Date(),
-            fileSize: size
+            fileSize: size,
+            isShort: Self.isShort(task)
         ))
         if let seconds = pendingPositions.removeValue(forKey: id) {
             store.setPosition(videoID: id, seconds: seconds)
@@ -289,6 +329,13 @@ final class DownloadManager {
     }
 
     // MARK: Helpers
+
+    /// A /shorts/ link, or a vertical video of three minutes or less.
+    private static func isShort(_ task: DownloadTask) -> Bool {
+        if task.url.contains("/shorts/") { return true }
+        guard let w = task.width, let h = task.height else { return false }
+        return h > w && (task.duration ?? .infinity) <= 180
+    }
 
     static func youtubeID(from url: URL) -> String? {
         let host = url.host?.lowercased() ?? ""

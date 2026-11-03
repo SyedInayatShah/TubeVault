@@ -1,4 +1,5 @@
-// Adds a TubeVault download button (with a live progress bar) to the YouTube player controls.
+// Adds a TubeVault download button (with a live progress bar) to the YouTube player controls,
+// and to the top-right controls of the Shorts player.
 // Once saved it becomes an "Open TubeVault" button, and pausing the video tells the app
 // where you stopped so it opens paused at the same spot.
 (() => {
@@ -15,13 +16,19 @@
   let pollTimer = null;
   let ui = null;
 
+  function isShorts() {
+    return location.pathname.startsWith("/shorts/");
+  }
+
   function currentVideoId() {
     const u = new URL(location.href);
-    return u.pathname === "/watch" ? u.searchParams.get("v") : null;
+    if (u.pathname === "/watch") return u.searchParams.get("v");
+    if (isShorts()) return u.pathname.split("/")[2] || null;
+    return null;
   }
 
   function videoElement() {
-    return document.querySelector("#movie_player video");
+    return document.querySelector(isShorts() ? "#shorts-player video" : "#movie_player video");
   }
 
   function isAdPlaying() {
@@ -71,13 +78,21 @@
   }
 
   function mount() {
-    if (ui && document.contains(ui.wrap)) return;
-    const host =
-      document.querySelector("#movie_player .ytp-right-controls-left") ||
-      document.querySelector("#movie_player .ytp-right-controls");
+    const shorts = isShorts();
+    const host = shorts
+      ? document.querySelector("ytd-shorts-player-controls #right-controls, #right-controls")
+      : document.querySelector("#movie_player .ytp-right-controls-left") ||
+        document.querySelector("#movie_player .ytp-right-controls");
     if (!host) return;
+    if (ui && ui.wrap.parentNode === host) return;
+    ui?.wrap.remove();
     ui = build();
-    host.insertBefore(ui.wrap, host.querySelector(".ytp-subtitles-button") || host.firstChild);
+    ui.wrap.classList.toggle("is-shorts", shorts);
+    if (shorts) {
+      host.insertBefore(ui.wrap, host.firstChild);
+    } else {
+      host.insertBefore(ui.wrap, host.querySelector(".ytp-subtitles-button") || host.firstChild);
+    }
     render({ state });
   }
 
@@ -121,7 +136,9 @@
   function onClick(e) {
     e.stopPropagation();
     if (!videoId) return;
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const url = isShorts()
+      ? `https://www.youtube.com/shorts/${videoId}`
+      : `https://www.youtube.com/watch?v=${videoId}`;
 
     if (state === "done") {
       const video = videoElement();

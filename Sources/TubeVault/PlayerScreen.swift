@@ -3,9 +3,11 @@ import SwiftUI
 
 struct PlayerScreen: View {
     @Environment(LibraryStore.self) private var store
+    @Environment(UIState.self) private var ui
     let video: Video
 
     @State private var player: AVPlayer?
+    @State private var autosave: Any?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,23 +48,45 @@ struct PlayerScreen: View {
             .background(.bar)
         }
         .navigationTitle(video.title)
-        .onAppear {
-            let p = AVPlayer(url: store.fileURL(for: video))
-            player = p
-            // Saved spot (from here or a pause on YouTube): open paused right there.
-            if let t = store.video(id: video.id)?.resumeAt {
-                p.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
-            } else {
-                p.play()
-            }
-        }
+        .onAppear(perform: start)
         .onDisappear {
-            if let p = player {
-                p.pause()
-                store.setPosition(videoID: video.id, seconds: p.currentTime().seconds)
-            }
+            savePosition()
+            player?.pause()
+            if let autosave { player?.removeTimeObserver(autosave) }
+            autosave = nil
             player = nil
         }
+        // Closing the window or quitting doesn't always tear the view down first.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in savePosition() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in savePosition() }
+    }
+
+    private func start() {
+        let p = AVPlayer(url: store.fileURL(for: video))
+        player = p
+        // Handed over from a pause on YouTube: wait there. Otherwise carry on from the saved spot.
+        let paused = ui.openPaused == video.id
+        ui.openPaused = nil
+        if let t = store.video(id: video.id)?.resumeAt {
+            p.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { _ in
+                if !paused { p.play() }
+            }
+        } else if !paused {
+            p.play()
+        }
+        // Keep the spot saved while watching, in case the app is closed abruptly.
+        autosave = p.addPeriodicTimeObserver(forInterval: CMTime(seconds: 5, preferredTimescale: 1), queue: .main) { _ in
+            MainActor.assumeIsolated {
+                if p.rate != 0 { savePosition() }
+            }
+        }
+    }
+
+    private func savePosition() {
+        guard let p = player else { return }
+        let seconds = p.currentTime().seconds
+        guard seconds.isFinite else { return }
+        store.setPosition(videoID: video.id, seconds: seconds)
     }
 }
 

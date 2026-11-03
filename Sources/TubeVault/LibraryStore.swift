@@ -92,8 +92,9 @@ final class LibraryStore {
 
     func videos(for item: SidebarItem) -> [Video] {
         switch item {
-        case .all: videos
-        case .unsorted: videos.filter { $0.libraryID == nil }
+        case .all: videos.filter { !$0.short }
+        case .shorts: videos.filter(\.short)
+        case .unsorted: videos.filter { $0.libraryID == nil && !$0.short }
         case .library(let id): videos.filter { $0.libraryID == id }
         case .downloads: []
         }

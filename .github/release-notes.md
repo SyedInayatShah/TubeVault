@@ -1,7 +1,12 @@
-## What's new in 1.2.1
+## What's new in 1.3.0
 
-- Fixes downloads that failed straight away with "Failed – retry" when YouTube asked to *confirm you're not a bot*. TubeVault now tries YouTube's mobile web client too, and if YouTube still blocks it, retries once using your browser's YouTube sign-in. The first time that happens, macOS may ask to let TubeVault read "Chrome Safe Storage". Click **Always Allow**.
-- Only the app changed. Your loaded extension keeps working.
+- **YouTube Shorts.** A ⬇ button now sits at the top right of the Shorts player, next to ⋮. Saved Shorts get their own **Shorts** feed in TubeVault: one Short at a time, looping, scroll or press ↑ ↓ to move between them.
+- **Best quality, always.** Videos download at the highest resolution YouTube offers, up to 4K. Previously they were capped at 1080p, and could drop to 360p when YouTube bot-checked the download.
+- **Resume in the app.** Close a video in TubeVault and it carries on from the same spot when you open it again.
+- **Automatic updates.** TubeVault now checks for new versions, shows a notification and a banner, and installs the update itself when you click **Update Now**. This is the last time you need to download TubeVault by hand.
+- Downloads run three at a time, so YouTube doesn't throttle big batches.
+
+**Updating the extension:** in `chrome://extensions`, click **↻ reload** on the TubeVault card. If you loaded it from **Documents › TubeVault Chrome Extension**, TubeVault has already refreshed that folder; otherwise load the new folder from the extension zip.
 
 ## ⬇️ What to download
 

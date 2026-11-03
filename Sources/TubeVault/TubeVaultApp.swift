@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UserNotifications
+import VideoToolbox
 
 /// Chrome runs this same binary as its native messaging host; otherwise start the app normally.
 @main
@@ -20,6 +21,7 @@ struct TubeVaultApp: App {
                 .environment(appDelegate.store)
                 .environment(appDelegate.downloads)
                 .environment(appDelegate.ui)
+                .environment(appDelegate.updater)
                 .frame(minWidth: 880, minHeight: 540)
         }
         .defaultSize(width: 1120, height: 720)
@@ -36,6 +38,7 @@ struct TubeVaultApp: App {
             }
             CommandGroup(replacing: .help) {
                 Button("TubeVault Setup Guide") { appDelegate.ui.showingSetup = true }
+                Button("Check for Updates…") { Task { await appDelegate.updater.check(announce: true) } }
                 Button("TubeVault on GitHub") {
                     NSWorkspace.shared.open(URL(string: "https://github.com/SyedInayatShah/TubeVault")!)
                 }
@@ -51,19 +54,28 @@ final class UIState {
     var showingAddLink = false
     var showingNewLibrary = false
     var showingSetup = !UserDefaults.standard.bool(forKey: "hasSeenSetup")
-    /// Set to show a video in the player (paused at its saved position).
+    /// Set to show a video in the player at its saved position.
     var openVideoID: String?
+    /// The video handed over from a pause on YouTube: it opens paused instead of playing on.
+    var openPaused: String?
+    /// The Short to show in the Shorts feed.
+    var currentShort: String?
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = LibraryStore()
     let ui = UIState()
+    let updater = Updater()
     lazy var downloads = DownloadManager(store: store)
     private lazy var server = LocalServer(downloads: downloads, store: store)
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Full-quality YouTube downloads are VP9; AVKit plays them once the system decoder is enabled.
+        VTRegisterSupplementalVideoDecoderIfAvailable(kCMVideoCodecType_VP9)
         server.start()
+        // Set before launch finishes so a click on an update notification that launched us is delivered.
+        UNUserNotificationCenter.current().delegate = self
 
         // Handles tubevault://download?url=… links sent by the browser extension.
         NSAppleEventManager.shared().setEventHandler(
@@ -77,8 +89,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = self
         NativeHost.installManifests()
+        ChromeExtension.refreshIfOutdated()
         NSUpdateDynamicServices()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        updater.start()
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -86,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Paused a downloaded video on YouTube? Pick up right there.
         if let id = downloads.resumeRequest, store.contains(videoID: id) {
             downloads.resumeRequest = nil
+            ui.openPaused = id
             ui.openVideoID = id
         }
     }
@@ -125,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 store.setPosition(videoID: id, seconds: t)
             }
             downloads.resumeRequest = nil
+            ui.openPaused = id
             ui.openVideoID = id
             NSApp.activate(ignoringOtherApps: true)
         } else if let link = value("url") {
@@ -140,5 +156,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let link {
             downloads.enqueue(link)
         }
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
+    ) async {
+        guard response.notification.request.content.categoryIdentifier == Updater.notificationCategory,
+              response.actionIdentifier != UNNotificationDismissActionIdentifier else { return }
+        await MainActor.run { updater.install() }
     }
 }

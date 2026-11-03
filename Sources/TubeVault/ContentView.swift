@@ -44,6 +44,9 @@ struct ContentView: View {
         .overlay(alignment: .bottom) {
             ToastView()
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            UpdateBanner()
+        }
     }
 
     /// Jumps to the player for a video requested from YouTube (re-pushed so it seeks again).
@@ -51,6 +54,12 @@ struct ContentView: View {
         guard let id = ui.openVideoID, let video = store.video(id: id) else { return }
         ui.openVideoID = nil
         ui.showingSetup = false
+        if video.short {
+            ui.openPaused = nil
+            ui.currentShort = id
+            selection = .shorts
+            return
+        }
         if selection != .all { selection = .all }
         path.removeAll()
         Task {
@@ -64,6 +73,8 @@ struct ContentView: View {
         switch selection ?? .all {
         case .downloads:
             DownloadsView()
+        case .shorts:
+            ShortsView()
         case .all:
             VideoGridView(title: "All Videos", videos: store.videos(for: .all))
         case .unsorted:

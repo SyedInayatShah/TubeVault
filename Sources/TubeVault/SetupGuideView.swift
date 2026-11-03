@@ -231,6 +231,27 @@ enum ChromeExtension {
         return folder
     }
 
+    /// After an app update, refreshes a previously saved extension folder with the bundled (newer) one.
+    /// Chrome picks up the new files when it restarts or when the extension is reloaded.
+    static func refreshIfOutdated() {
+        guard let source = Bundle.main.url(forResource: "ChromeExtension", withExtension: nil),
+              FileManager.default.fileExists(atPath: folder.path),
+              version(at: folder) != version(at: source) else { return }
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil) else { return }
+        for item in items {
+            let target = folder.appendingPathComponent(item.lastPathComponent)
+            try? fm.removeItem(at: target)
+            try? fm.copyItem(at: item, to: target)
+        }
+    }
+
+    private static func version(at folder: URL) -> String? {
+        guard let data = try? Data(contentsOf: folder.appendingPathComponent("manifest.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return json["version"] as? String
+    }
+
     static func openExtensionsPage() {
         let page = URL(string: "chrome://extensions")!
         if let chrome = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {

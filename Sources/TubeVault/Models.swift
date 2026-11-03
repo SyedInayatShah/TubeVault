@@ -13,6 +13,10 @@ struct Video: Codable, Identifiable, Hashable {
     var fileSize: Int64?
     /// Where playback stopped (seconds), from the in-app player or a pause on YouTube.
     var resumeAt: Double?
+    /// A YouTube Short: vertical, shown in the swipeable Shorts feed instead of the grid.
+    var isShort: Bool?
+
+    var short: Bool { isShort ?? false }
 
     var formattedDuration: String? {
         guard let duration, duration > 0 else { return nil }
@@ -28,6 +32,7 @@ struct VideoLibrary: Codable, Identifiable, Hashable {
 
 enum SidebarItem: Hashable {
     case all
+    case shorts
     case unsorted
     case downloads
     case library(UUID)

@@ -64,3 +64,32 @@
   from { background-position: 200% 0; }
   to { background-position: 0 0; }
 }
+
+/* Shorts: a round button next to the ⋮ and fullscreen buttons at the top of the player. */
+.tubevault-wrap.is-shorts {
+  height: 48px;
+}
+.tubevault-wrap.is-shorts .tubevault-btn {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.tubevault-wrap.is-shorts .tubevault-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.tubevault-wrap.is-shorts .tubevault-pill {
+  padding: 6px 10px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+}
+.tubevault-wrap.is-shorts .tubevault-track {
+  width: 48px;
+}
+.tubevault-wrap.is-shorts.is-done .tubevault-pill {
+  background: #ff0033;
+}

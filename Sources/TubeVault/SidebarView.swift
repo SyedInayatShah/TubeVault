@@ -18,8 +18,12 @@ struct SidebarView: View {
         List(selection: $selection) {
             Section("Videos") {
                 Label("All Videos", systemImage: "play.rectangle.on.rectangle")
-                    .badge(store.videos.count)
+                    .badge(store.videos(for: .all).count)
                     .tag(SidebarItem.all)
+
+                Label("Shorts", systemImage: "film.stack")
+                    .badge(store.videos(for: .shorts).count)
+                    .tag(SidebarItem.shorts)
 
                 Label("Unsorted", systemImage: "tray")
                     .badge(store.videos(for: .unsorted).count)
