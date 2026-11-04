@@ -301,17 +301,28 @@ final class DownloadManager {
 
     /// YouTube rate-limits (and serves low quality to) many simultaneous downloads, so a few run at once.
     private static let maxConcurrent = 3
+    /// Shorts from Save all are small, so a few more run at once. They wait while a video you picked yourself
+    /// downloads, so that video gets the whole connection.
+    private static let maxShorts = 5
     @ObservationIgnored private var running = 0
+    @ObservationIgnored private var runningVideos = 0
 
     private func startQueued() {
+        let videoWaiting = tasks.contains { !$0.started && !$0.cancelled && !$0.batch }
         for task in tasks where !task.started && !task.cancelled {
-            guard running < Self.maxConcurrent else { return }
+            if task.batch {
+                guard runningVideos == 0, !videoWaiting, running < Self.maxShorts else { continue }
+            } else {
+                guard runningVideos < Self.maxConcurrent else { continue }
+            }
             task.started = true
             running += 1
+            if !task.batch { runningVideos += 1 }
             keepAwake()
             Task {
                 await run(task)
                 running -= 1
+                if !task.batch { runningVideos -= 1 }
                 keepAwake()
                 startQueued()
             }
@@ -371,15 +382,18 @@ final class DownloadManager {
             "-f", "bv*[vcodec!^=av01][dynamic_range=SDR]+ba[ext=m4a]/bv*[vcodec!^=av01]+ba/b",
             "-S", "res,fps,vcodec,acodec:m4a",
             "--merge-output-format", "mp4",
+            // YouTube caps each connection at about 1 MB/s, so each file is fetched in pieces over 8
+            // connections at once (formats=dashy below). Same file, same quality, several times faster.
+            "--concurrent-fragments", "8",
             "--progress-template",
-            "download:TVP %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(progress.eta)s",
+            "download:TVP %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(progress.eta)s %(progress.fragment_index)s %(progress.fragment_count)s",
             "--print", "before_dl:TVINFO %(.{id,title,channel,uploader,duration,thumbnail,height,width})j",
             "--print", "before_dl:TVPARTS %(requested_formats.:.format_id)j",
             "--print", "after_move:TVFILE %(filepath)s",
             "-o", Paths.videos.path + "/%(title).80B [%(id)s].%(ext)s",
             // When YouTube bot-checks the default clients, the embedded player still offers full quality
             // and the mobile web client at least a 360p fallback.
-            "--extractor-args", "youtube:player_client=default,web_embedded,mweb",
+            "--extractor-args", "youtube:player_client=default,web_embedded,mweb;formats=dashy",
         ]
         if let browser {
             args += ["--cookies-from-browser", browser]
@@ -473,8 +487,14 @@ final class DownloadManager {
     private func updateProgress(_ task: DownloadTask, fields: [Substring]) {
         guard fields.count >= 5 else { return }
         let done = Double(fields[0]) ?? 0
-        guard let total = Double(fields[1]) ?? Double(fields[2]), total > 0 else { return }
-        let fraction = min(done / total, 1)
+        let fraction: Double
+        if fields.count >= 7, let index = Double(fields[5]), let count = Double(fields[6]), count > 0 {
+            // Downloaded in pieces: the size is only an estimate until the end, the piece count is exact.
+            fraction = min(index / count, 1)
+        } else {
+            guard let total = Double(fields[1]) ?? Double(fields[2]), total > 0 else { return }
+            fraction = min(done / total, 1)
+        }
 
         // Video and audio are downloaded one after another; a reset means the next part began.
         if fraction + 0.3 < task.lastFraction, task.partIndex < task.parts - 1 {
