@@ -1,10 +1,16 @@
-## What's new in 1.5.6
+## What's new in 1.5.7
 
+- **Much faster downloads, same quality.** YouTube slows down each single connection, so TubeVault now fetches every video in pieces over 8 connections at once. It's the same file at the same resolution (up to 4K), roughly twice as fast or more, up to the speed of your internet.
+- **Your videos come first.** While a video you clicked is downloading, **Save all** Shorts wait, so the video gets your whole connection.
+- **Shorts download faster too:** each one uses the 8 connections, and Save all runs up to 5 at a time.
 - **Save all saves Shorts you haven't reached yet.** It now skips the next 150 Shorts in your feed (you'd scroll through those on YouTube anyway) and saves the 500 after them, so TubeVault doesn't end up with the same Shorts you just watched. Shorts you scroll to on YouTube while it runs are left out too.
 - **Save all goes up to 500** (was 400).
-- **Shorts controls size themselves to the Short.** Buttons and text are bigger in full screen and shrink to fit in a small window, so they no longer overlap or cover the video.
 
 **Updating the extension:** TubeVault updates itself. Then in `chrome://extensions`, click **↻ reload** on the TubeVault card and refresh your YouTube tabs.
+
+## What's new in 1.5.6
+
+- **Shorts controls size themselves to the Short.** Buttons and text are bigger in full screen and shrink to fit in a small window, so they no longer overlap or cover the video.
 
 ## What's new in 1.5.5
 
