@@ -94,7 +94,19 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 
 > You'll see a "Developer mode extensions" notice now and then when Chrome starts. That's normal for extensions not from the Web Store. Just close it.
 
-**All of these steps are also in the app.** TubeVault shows them the first time you open it, and you can reopen them from **Help › TubeVault Setup Guide** or the **?** button at the bottom of the sidebar.
+### 5. 🧭 Or use Safari
+
+The Safari extension comes inside TubeVault, so there's nothing extra to download. It has the same buttons as in Chrome: the player ⬇, Shorts **Save** and **Save all**, playlists, and the right-click menu.
+
+1. Open TubeVault once (that's what tells Safari about the extension).
+2. In Safari, open **Settings › Advanced** and turn on **Show features for web developers**.
+3. In the **Develop** menu, choose **Allow Unsigned Extensions** and enter your Mac password.
+4. In **Settings › Extensions**, tick **TubeVault**.
+5. On YouTube, click the TubeVault icon next to the address bar and choose **Always Allow on This Website**.
+
+> The extension isn't signed by Apple (that needs a paid Apple Developer account), so **Safari turns it off every time Safari quits**. After restarting Safari, repeat steps 3 and 4.
+
+**All of these steps (Chrome and Safari) are also in the app.** TubeVault shows them the first time you open it, and you can reopen them from **Help › TubeVault Setup Guide** or the **?** button at the bottom of the sidebar.
 
 ---
 
@@ -162,6 +174,7 @@ Then load the `extension/chrome` folder in Chrome as described above.
 | Local server for progress and positions (`127.0.0.1:47823`, only accepts the extension) | `Sources/TubeVault/LocalServer.swift` |
 | In-app setup guide | `Sources/TubeVault/SetupGuideView.swift` |
 | Chrome extension (player button, right-click menu) | `extension/chrome` |
+| Safari extension: the same files, wrapped in `TubeVault.app/Contents/PlugIns` | `Sources/SafariExtension`, `Resources/SafariExtension` |
 | Playlist button, picker and progress card | `extension/chrome/playlist.js` |
 | Library data | `~/Library/Application Support/TubeVault/library.json` |
 | Video files and thumbnails | `~/Library/Application Support/TubeVault/Videos` and `…/Thumbnails` |

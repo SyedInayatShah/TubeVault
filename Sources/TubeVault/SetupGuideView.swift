@@ -1,4 +1,5 @@
 import AppKit
+import SafariServices
 import SwiftUI
 
 /// In-app walkthrough: install yt-dlp, add the Chrome extension, and get past Gatekeeper.
@@ -97,8 +98,19 @@ struct SetupGuideView: View {
     }
 
     private var safariSection: some View {
-        GuideCard(number: 3, title: "Using Safari or another browser?", symbol: "safari") {
-            Text("Right-click a YouTube link and choose **Services › Download with TubeVault**. If it isn’t listed yet, log out of your Mac and back in once. You can also press **⌘D** in TubeVault and paste any link.")
+        GuideCard(number: 3, title: "Using Safari?", symbol: "safari") {
+            Text("The same buttons work in Safari. The extension comes inside TubeVault, so there’s nothing to download. It isn’t signed by Apple, so Safari turns it off each time Safari quits; repeat steps 2 and 3 after restarting Safari.")
+            StepRow(n: 1, text: "In Safari, open **Settings › Advanced** and turn on **Show features for web developers**.")
+            StepRow(n: 2, text: "In the **Develop** menu, choose **Allow Unsigned Extensions** and enter your password.")
+            StepRow(n: 3, text: "In **Settings › Extensions**, tick **TubeVault**.") {
+                Button("Open in Safari") {
+                    SFSafariApplication.showPreferencesForExtension(withIdentifier: "com.syedinayatshah.tubevault.Extension")
+                }
+            }
+            StepRow(n: 4, text: "On YouTube, click the TubeVault icon next to the address bar and choose **Always Allow on This Website**.")
+            Text("Another browser? Right-click a YouTube link and choose **Services › Download with TubeVault**, or press **⌘D** in TubeVault and paste the link.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
     }
 
