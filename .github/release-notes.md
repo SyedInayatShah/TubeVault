@@ -1,3 +1,12 @@
+## What's new in 1.5.8
+
+- **Works in Safari.** The same extension now runs in Safari, with all the same buttons: the player ⬇, Shorts **Save** and **Save all**, playlists, and the right-click menu. In Safari, open **Settings › Advanced** and turn on **Show features for web developers**. Then go to **Settings › Developer › Add Temporary Extension…** and choose the **TubeVault Chrome Extension** folder. Full steps are in TubeVault's setup guide (**Help › TubeVault Setup Guide**) and the README.
+  - Safari removes temporary extensions when it quits, so add it again after restarting Safari.
+  - Keep TubeVault open while downloading from Safari.
+- **No more double ⬇ button.** If the extension was reloaded while YouTube was open, the player could show two download buttons. Now only one stays.
+
+**Updating the extension:** TubeVault updates itself. Then in `chrome://extensions`, click **↻ reload** on the TubeVault card and refresh your YouTube tabs.
+
 ## What's new in 1.5.7
 
 - **Much faster downloads, same quality.** YouTube slows down each single connection, so TubeVault now fetches every video in pieces over 8 connections at once. It's the same file at the same resolution (up to 4K), roughly twice as fast or more, up to the speed of your internet.
