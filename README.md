@@ -96,15 +96,14 @@ You're done. Open any YouTube video and look for the **⬇ download icon** in th
 
 ### 5. 🧭 Or use Safari
 
-The Safari extension comes inside TubeVault, so there's nothing extra to download. It has the same buttons as in Chrome: the player ⬇, Shorts **Save** and **Save all**, playlists, and the right-click menu.
+Safari uses the same extension folder as Chrome, with the same buttons: the player ⬇, Shorts **Save** and **Save all**, playlists, and the right-click menu.
 
-1. Open TubeVault once (that's what tells Safari about the extension).
+1. Get the **TubeVault Chrome Extension** folder (step 4.1 above, or **Save Extension** in TubeVault's setup guide).
 2. In Safari, open **Settings › Advanced** and turn on **Show features for web developers**.
-3. In the **Develop** menu, choose **Allow Unsigned Extensions** and enter your Mac password.
-4. In **Settings › Extensions**, tick **TubeVault**.
-5. On YouTube, click the TubeVault icon next to the address bar and choose **Always Allow on This Website**.
+3. Open **Settings › Developer**, click **Add Temporary Extension…**, choose the **TubeVault Chrome Extension** folder and enter your Mac password if asked.
+4. On YouTube, click the TubeVault icon next to the address bar and choose **Always Allow on This Website**, then refresh the page.
 
-> The extension isn't signed by Apple (that needs a paid Apple Developer account), so **Safari turns it off every time Safari quits**. After restarting Safari, repeat steps 3 and 4.
+> **Safari removes temporary extensions when it quits**, so repeat step 3 after restarting Safari. In Safari, keep TubeVault open while you download: the extension can't start the app for you there.
 
 **All of these steps (Chrome and Safari) are also in the app.** TubeVault shows them the first time you open it, and you can reopen them from **Help › TubeVault Setup Guide** or the **?** button at the bottom of the sidebar.
 
@@ -174,7 +173,6 @@ Then load the `extension/chrome` folder in Chrome as described above.
 | Local server for progress and positions (`127.0.0.1:47823`, only accepts the extension) | `Sources/TubeVault/LocalServer.swift` |
 | In-app setup guide | `Sources/TubeVault/SetupGuideView.swift` |
 | Chrome extension (player button, right-click menu) | `extension/chrome` |
-| Safari extension: the same files, wrapped in `TubeVault.app/Contents/PlugIns` | `Sources/SafariExtension`, `Resources/SafariExtension` |
 | Playlist button, picker and progress card | `extension/chrome/playlist.js` |
 | Library data | `~/Library/Application Support/TubeVault/library.json` |
 | Video files and thumbnails | `~/Library/Application Support/TubeVault/Videos` and `…/Thumbnails` |

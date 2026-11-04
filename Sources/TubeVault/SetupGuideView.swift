@@ -1,5 +1,4 @@
 import AppKit
-import SafariServices
 import SwiftUI
 
 /// In-app walkthrough: install yt-dlp, add the Chrome extension, and get past Gatekeeper.
@@ -99,15 +98,14 @@ struct SetupGuideView: View {
 
     private var safariSection: some View {
         GuideCard(number: 3, title: "Using Safari?", symbol: "safari") {
-            Text("The same buttons work in Safari. The extension comes inside TubeVault, so there’s nothing to download. It isn’t signed by Apple, so Safari turns it off each time Safari quits; repeat steps 2 and 3 after restarting Safari.")
-            StepRow(n: 1, text: "In Safari, open **Settings › Advanced** and turn on **Show features for web developers**.")
-            StepRow(n: 2, text: "In the **Develop** menu, choose **Allow Unsigned Extensions** and enter your password.")
-            StepRow(n: 3, text: "In **Settings › Extensions**, tick **TubeVault**.") {
-                Button("Open in Safari") {
-                    SFSafariApplication.showPreferencesForExtension(withIdentifier: "com.syedinayatshah.tubevault.Extension")
-                }
-            }
-            StepRow(n: 4, text: "On YouTube, click the TubeVault icon next to the address bar and choose **Always Allow on This Website**.")
+            Text("Safari uses the same extension folder as Chrome, with the same buttons.")
+            StepRow(n: 1, text: "Save the extension to your Documents folder (step 2.1 above).")
+            StepRow(n: 2, text: "In Safari, open **Settings › Advanced** and turn on **Show features for web developers**.")
+            StepRow(n: 3, text: "Open **Settings › Developer**, click **Add Temporary Extension…** and choose **Documents › TubeVault Chrome Extension**.")
+            StepRow(n: 4, text: "On YouTube, click the TubeVault icon next to the address bar, choose **Always Allow on This Website**, and refresh.")
+            Label("Safari removes temporary extensions when it quits, so repeat step 3 after restarting Safari. Keep TubeVault open while you download from Safari.", systemImage: "lightbulb")
+                .font(.callout)
+                .foregroundStyle(.secondary)
             Text("Another browser? Right-click a YouTube link and choose **Services › Download with TubeVault**, or press **⌘D** in TubeVault and paste the link.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
