@@ -11,6 +11,12 @@
   };
   const ACTIVE = ["starting", "downloading", "finishing"];
 
+  // After the extension is reloaded or turned on with YouTube already open, the previous copy of this
+  // script can still be running in the tab. Only the newest copy keeps a button; older ones remove theirs.
+  const RUN = String(Math.random());
+  document.documentElement.dataset.tubevaultPlayer = RUN;
+  const superseded = () => document.documentElement.dataset.tubevaultPlayer !== RUN;
+
   let videoId = null;
   let state = "none";
   let pollTimer = null;
@@ -262,7 +268,13 @@
   }
 
   // YouTube is a single-page app: keep the button mounted and follow video changes.
-  setInterval(() => {
+  const loop = setInterval(() => {
+    if (superseded()) {
+      clearInterval(loop);
+      stopPolling();
+      ui?.wrap.remove();
+      return;
+    }
     const id = currentVideoId();
     if (id !== videoId) {
       videoId = id;
