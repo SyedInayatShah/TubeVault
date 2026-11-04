@@ -1,6 +1,10 @@
 import AVKit
 import SwiftUI
 
+/// Everything drawn over a Short (buttons, caption, progress bar) is this much bigger than the usual macOS sizes.
+private let shortsScale: CGFloat = 1.8
+private func sized(_ value: CGFloat) -> CGFloat { value * shortsScale }
+
 /// Downloaded Shorts as a vertical feed: one Short per page, scroll (or ↑ ↓) to move between them.
 /// The visible Short loops; the rest stay paused.
 struct ShortsView: View {
@@ -94,13 +98,13 @@ struct ShortsView: View {
     /// Up/down buttons, like YouTube's on desktop, for a mouse without smooth scrolling.
     private func arrows(_ shorts: [Video]) -> some View {
         let index = shorts.firstIndex { $0.id == current } ?? 0
-        return VStack(spacing: 12) {
+        return VStack(spacing: sized(12)) {
             RoundButton(symbol: "chevron.up", help: "Previous Short (↑)") { step(-1, in: shorts) }
                 .disabled(index == 0)
             RoundButton(symbol: "chevron.down", help: "Next Short (↓)") { step(1, in: shorts) }
                 .disabled(index >= shorts.count - 1)
         }
-        .padding(.trailing, 24)
+        .padding(.trailing, sized(16))
     }
 
     private func step(_ delta: Int, in shorts: [Video]) {
@@ -128,7 +132,7 @@ private struct ShortPage: View {
     var body: some View {
         GeometryReader { geo in
             let height = geo.size.height - 32
-            let width = min(height * 9 / 16, geo.size.width - 140)
+            let width = min(height * 9 / 16, geo.size.width - 2 * (sized(44) + sized(16) + 8))
             HStack {
                 Spacer(minLength: 0)
                 card.frame(width: width, height: height)
@@ -159,44 +163,44 @@ private struct ShortPage: View {
 
             if paused {
                 Image(systemName: "play.fill")
-                    .font(.system(size: 54))
+                    .font(.system(size: sized(54)))
                     .foregroundStyle(.white.opacity(0.9))
                     .shadow(radius: 8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             // Caption, like on YouTube.
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: sized(5)) {
                 Text(video.channel.isEmpty ? " " : "@\(video.channel)")
-                    .font(.callout.weight(.semibold))
+                    .font(.system(size: sized(12), weight: .semibold))
                 Text(video.title)
-                    .font(.callout)
+                    .font(.system(size: sized(12)))
                     .lineLimit(2)
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.top, 40)
-            .padding(.bottom, 18)
+            .padding(.horizontal, sized(12))
+            .padding(.top, sized(36))
+            .padding(.bottom, sized(14))
             .background(LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .top, endPoint: .bottom))
             .allowsHitTesting(false)
 
             // Playback progress.
             GeometryReader { g in
-                Rectangle().fill(.red).frame(width: g.size.width * progress, height: 3)
+                Rectangle().fill(.red).frame(width: g.size.width * progress, height: sized(3))
             }
-            .frame(height: 3)
+            .frame(height: sized(3))
             .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         // Play/pause and volume top left, more top right, like YouTube's Shorts player.
         .overlay(alignment: .topLeading) {
-            HStack(spacing: 8) {
+            HStack(spacing: sized(8)) {
                 RoundButton(symbol: paused ? "play.fill" : "pause.fill",
                             help: paused ? "Play (space)" : "Pause (space)", small: true) { togglePause() }
                 VolumeControl(muted: $muted, volume: $volume)
             }
-            .padding(12)
+            .padding(sized(12))
         }
         .overlay(alignment: .topTrailing) {
             HStack(spacing: 8) {
@@ -210,7 +214,7 @@ private struct ShortPage: View {
                 .buttonStyle(RoundButtonStyle(small: true))
                 .fixedSize()
             }
-            .padding(12)
+            .padding(sized(12))
         }
     }
 
@@ -287,9 +291,9 @@ private struct RoundButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .semibold))
+            .font(.system(size: sized(16), weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: small ? 40 : 44, height: small ? 40 : 44)
+            .frame(width: sized(small ? 40 : 44), height: sized(small ? 40 : 44))
             // Over the video it's dark so it shows on bright Shorts too; beside the feed it's light.
             .background(Circle().fill(small
                 ? Color.black.opacity(configuration.isPressed ? 0.6 : 0.4)
@@ -321,7 +325,7 @@ private struct VolumeControl: View {
         HStack(spacing: 0) {
             Button(action: toggle) {
                 Image(systemName: symbol)
-                    .frame(width: 40, height: 40)
+                    .frame(width: sized(40), height: sized(40))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -333,17 +337,17 @@ private struct VolumeControl: View {
             ), in: 0...1)
             .controlSize(.small)
             .tint(.white)
-            .frame(width: 80)
+            .frame(width: sized(80))
             .padding(.leading, 2)
-            .padding(.trailing, 16)
+            .padding(.trailing, sized(14))
             .opacity(hovering ? 1 : 0)
-            .frame(width: hovering ? 100 : 0, alignment: .leading)
+            .frame(width: hovering ? sized(80) + 2 + sized(14) : 0, alignment: .leading)
             .clipped()
             .allowsHitTesting(hovering)
         }
-        .font(.system(size: 16, weight: .semibold))
+        .font(.system(size: sized(16), weight: .semibold))
         .foregroundStyle(.white)
-        .frame(height: 40)
+        .frame(height: sized(40))
         .background(Capsule().fill(.black.opacity(0.4)))
         .clipShape(Capsule())
         .fixedSize()

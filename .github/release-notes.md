@@ -1,3 +1,7 @@
+## What's new in 1.5.5
+
+- **Everything on a Short is 1.8× bigger:** play/pause, volume, ⋯, the up/down arrows, and the channel name and title at the bottom.
+
 ## What's new in 1.5.4
 
 - **Bigger buttons on Shorts.** Play/pause, volume and ⋯ are larger and easier to hit.
