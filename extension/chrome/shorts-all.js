@@ -1,9 +1,10 @@
-// "Save all" on YouTube Shorts: saves the Shorts that come after the one you're on, the same ones
-// your Shorts feed would show you next (it asks YouTube for them with your sign-in, so nothing has to play).
-// It keeps TubeVault topped up a few at a time, up to 400, until it's stopped or this tab is closed.
+// "Save all" on YouTube Shorts: saves Shorts from your own feed (it asks YouTube for them with your
+// sign-in, so nothing has to play), skipping the next 150 you'd scroll through on YouTube anyway.
+// It keeps TubeVault topped up a few at a time, up to 500, until it's stopped or this tab is closed.
 (() => {
   const NS = "http://www.w3.org/2000/svg";
-  const LIMIT = 400;
+  const LIMIT = 500;
+  const SKIP = 150; // upcoming Shorts left for YouTube, since you'd watch those there anyway
   const AHEAD = 20; // Shorts queued in TubeVault at a time
   const ICONS = {
     all: ["M8 3.5h8", "M12 7.5v9", "M8.5 13 12 16.5l3.5-3.5", "M5 20.5h14"],
@@ -97,6 +98,16 @@
     };
   }
 
+  // Each visit to /shorts starts from a fresh Short picked for you, so every one leads to a different
+  // run of recommendations instead of the Shorts already lined up after the one you're on.
+  async function seedFeed() {
+    const html = await (await fetch(`${location.origin}/shorts`, { credentials: "include" })).text();
+    const seed = html.match(/"reelWatchEndpoint":\{"videoId":"([^"]+)"/)?.[1];
+    if (!seed) throw new Error("YouTube didn’t recommend any Shorts.");
+    const feed = await startFeed(seed);
+    return Object.assign(feed, { seed, pages: 0, fresh: 0 });
+  }
+
   async function nextPage(feed) {
     const res = await fetch(`${location.origin}/youtubei/v1/reel/reel_watch_sequence?prettyPrint=false`, {
       method: "POST",
@@ -124,15 +135,39 @@
   async function start() {
     const first = currentShort();
     if (!first || job?.running) return;
-    job = { running: true, stopping: false, ids: [], buffer: [], seen: new Set([first]),
-            saved: 0, pending: 0, failed: 0, current: "", feed: null, error: "", startedAt: Date.now() };
+    job = { running: true, stopping: false, ids: [], buffer: [], seen: new Set(), excluded: new Set([first]),
+            skipped: 0, saved: 0, pending: 0, failed: 0, current: "", feed: null, dryRuns: 0, error: "",
+            startedAt: Date.now() };
     render();
+    // The next SKIP Shorts are the ones you're about to scroll through on YouTube anyway, so they're
+    // left out; saving starts after them, with Shorts of the same kind you haven't reached yet.
     try {
-      job.feed = await startFeed(first);
+      job.feed = Object.assign(await startFeed(first), { fresh: 0 });
+      while (job.skipped < SKIP && job.feed.token && job.running) {
+        for (const id of await nextPage(job.feed)) {
+          if (job.excluded.has(id)) continue;
+          if (job.skipped < SKIP) { job.excluded.add(id); job.skipped++; } else take(id);
+        }
+        render();
+      }
     } catch (e) {
       return finish(e.message);
     }
-    loop();
+    if (job.running) loop();
+  }
+
+  function take(id) {
+    if (job.excluded.has(id) || job.seen.has(id)) return;
+    job.seen.add(id);
+    job.buffer.push(id);
+    job.feed.fresh++;
+  }
+
+  // When this feed runs out, carry on from a fresh starting point YouTube picks for you.
+  async function nextSeed() {
+    job.dryRuns = job.feed.fresh ? 0 : job.dryRuns + 1;
+    job.feed = await seedFeed();
+    take(job.feed.seed);
   }
 
   async function loop() {
@@ -143,13 +178,17 @@
   }
 
   async function tick() {
+    // Anything you scroll to on YouTube while this runs isn't needed in TubeVault too.
+    const here = currentShort();
+    if (here) job.excluded.add(here);
+    job.buffer = job.buffer.filter((id) => !job.excluded.has(id));
+
     // Top up the buffer from the feed, a page at a time.
     const room = job.stopping ? 0 : Math.min(AHEAD - job.pending, LIMIT - job.ids.length);
-    for (let pages = 0; job.buffer.length < room && job.feed.token && pages < 3; pages++) {
+    for (let pages = 0; job.buffer.length < room && job.dryRuns < 5 && pages < 3; pages++) {
       try {
-        for (const id of await nextPage(job.feed)) {
-          if (!job.seen.has(id)) { job.seen.add(id); job.buffer.push(id); }
-        }
+        if (!job.feed.token) await nextSeed();
+        else for (const id of await nextPage(job.feed)) take(id);
       } catch (e) {
         job.error = e.message;
         break;
@@ -168,7 +207,7 @@
     }
     Object.assign(job, { saved: r.saved, pending: r.pending, failed: r.failed, current: r.current || "" });
 
-    const fedAll = job.ids.length >= LIMIT || (!job.feed.token && !job.buffer.length);
+    const fedAll = job.ids.length >= LIMIT || (job.dryRuns >= 5 && !job.buffer.length);
     if (r.full) return finish("Your Mac is almost out of space.");
     if ((fedAll || job.stopping) && job.pending === 0) return finish();
     render();
@@ -291,8 +330,8 @@
       ui.iconHost.replaceChildren(icon(name));
       ui.fillIcon.replaceChildren(icon(name));
       ui.button.title = running
-        ? `Saving the Shorts after this one: ${job.saved} saved. Click to stop.`
-        : `Save the next ${LIMIT} Shorts in your feed to TubeVault`;
+        ? `Saving Shorts from your feed: ${job.saved} saved. Click to stop.`
+        : `Save ${LIMIT} Shorts from your feed to TubeVault, after the next ${SKIP} you’d see here`;
     }
     if (!job) return;
 
@@ -314,7 +353,7 @@
       p.label.textContent = job.stopping ? "Stopping…" : "Saving to TubeVault";
       p.now.textContent = job.stopping
         ? "Finishing the ones already downloading"
-        : job.current ? `Now: ${job.current}` : sent ? "Starting…" : "Reading your feed…";
+        : job.current ? `Now: ${job.current}` : sent ? "Starting…" : job.skipped < SKIP ? `Skipping ahead… ${job.skipped}/${SKIP}` : "Reading your feed…";
       p.actions.replaceChildren(...(job.stopping ? [] : [action("Stop", stop)]));
     } else {
       p.label.textContent = "Saved to TubeVault";
