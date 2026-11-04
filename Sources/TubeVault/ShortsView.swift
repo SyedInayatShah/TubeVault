@@ -1,9 +1,18 @@
 import AVKit
 import SwiftUI
 
-/// Everything drawn over a Short (buttons, caption, progress bar) is this much bigger than the usual macOS sizes.
-private let shortsScale: CGFloat = 1.8
-private func sized(_ value: CGFloat) -> CGFloat { value * shortsScale }
+/// How much bigger than the usual macOS sizes the Shorts controls are drawn. Over a Short it follows the
+/// Short's width (bigger in full screen, smaller in a small window); the up/down arrows use the default.
+private struct ShortsScaleKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1.25
+}
+
+private extension EnvironmentValues {
+    var shortsScale: CGFloat {
+        get { self[ShortsScaleKey.self] }
+        set { self[ShortsScaleKey.self] = newValue }
+    }
+}
 
 /// Downloaded Shorts as a vertical feed: one Short per page, scroll (or ↑ ↓) to move between them.
 /// The visible Short loops; the rest stay paused.
@@ -17,6 +26,8 @@ struct ShortsView: View {
     /// Bumped by the space bar; the Short on screen pauses or plays.
     @State private var pauseToggle = 0
     @State private var flick = FlickScroller()
+    @Environment(\.shortsScale) private var scale
+    private func sized(_ value: CGFloat) -> CGFloat { value * scale }
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -123,6 +134,8 @@ private struct ShortPage: View {
     let pauseToggle: Int
 
     @Environment(LibraryStore.self) private var store
+    @Environment(\.shortsScale) private var scale
+    private func sized(_ value: CGFloat) -> CGFloat { value * scale }
     @State private var player: AVQueuePlayer?
     @State private var looper: AVPlayerLooper?
     @State private var paused = false
@@ -135,7 +148,8 @@ private struct ShortPage: View {
             let width = min(height * 9 / 16, geo.size.width - 2 * (sized(44) + sized(16) + 8))
             HStack {
                 Spacer(minLength: 0)
-                card.frame(width: width, height: height)
+                card(scale: min(max(width / 300, 0.9), 1.4))
+                    .frame(width: width, height: height)
                 Spacer(minLength: 0)
             }
             .frame(maxHeight: .infinity)
@@ -150,8 +164,10 @@ private struct ShortPage: View {
         .onChange(of: pauseToggle) { if isActive { togglePause() } }
     }
 
-    private var card: some View {
-        ZStack(alignment: .bottom) {
+    /// scale: from the Short's width, so the controls fit a small window and grow in full screen.
+    private func card(scale: CGFloat) -> some View {
+        let sized = { (value: CGFloat) in value * scale }
+        return ZStack(alignment: .bottom) {
             Color.black
             if let player {
                 BarePlayerView(player: player)
@@ -216,6 +232,7 @@ private struct ShortPage: View {
             }
             .padding(sized(12))
         }
+        .environment(\.shortsScale, scale)
     }
 
     private func togglePause() {
@@ -287,6 +304,8 @@ private struct RoundButton: View {
 
 private struct RoundButtonStyle: ButtonStyle {
     var small = false
+    @Environment(\.shortsScale) private var scale
+    private func sized(_ value: CGFloat) -> CGFloat { value * scale }
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
@@ -305,6 +324,8 @@ private struct RoundButtonStyle: ButtonStyle {
 
 /// Speaker button with a slider that slides out on hover, like YouTube's volume control.
 private struct VolumeControl: View {
+    @Environment(\.shortsScale) private var scale
+    private func sized(_ value: CGFloat) -> CGFloat { value * scale }
     @Binding var muted: Bool
     @Binding var volume: Double
     @State private var hovering = false

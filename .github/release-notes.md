@@ -1,3 +1,7 @@
+## What's new in 1.5.6
+
+- **Shorts controls size themselves to the Short.** Buttons and text are bigger in full screen and shrink to fit in a small window, so they no longer overlap or cover the video.
+
 ## What's new in 1.5.5
 
 - **Everything on a Short is 1.8× bigger:** play/pause, volume, ⋯, the up/down arrows, and the channel name and title at the bottom.
