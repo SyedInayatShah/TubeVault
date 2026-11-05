@@ -102,6 +102,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSUpdateDynamicServices()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         updater.start()
+        // New Mac: fetch yt-dlp, deno and ffmpeg in the background so the first download just works.
+        Task {
+            await ToolInstaller.shared.ensure()
+            await ToolInstaller.shared.refreshYtDlp()
+        }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {

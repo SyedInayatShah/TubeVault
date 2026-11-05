@@ -1,16 +1,14 @@
 import AppKit
 import SwiftUI
 
-/// In-app walkthrough: install yt-dlp, add the Chrome extension, and get past Gatekeeper.
+/// In-app walkthrough: the download engine (set up automatically), the Chrome and Safari extension, and Gatekeeper.
 struct SetupGuideView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("hasSeenSetup") private var hasSeenSetup = false
 
-    @State private var ytdlpPath = Tools.path(for: "yt-dlp")
-    @State private var ffmpegPath = Tools.path(for: "ffmpeg")
+    private var installer = ToolInstaller.shared
     @State private var extensionFolder: URL?
 
-    private let brewCommand = "brew install yt-dlp ffmpeg deno"
     private let quarantineCommand = "xattr -dr com.apple.quarantine /Applications/TubeVault.app"
 
     var body: some View {
@@ -52,26 +50,35 @@ struct SetupGuideView: View {
                 .frame(width: 72, height: 72)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Welcome to TubeVault").font(.title.weight(.bold))
-                Text("Three quick steps and you can right-click any YouTube video to keep it for offline viewing.")
+                Text("A couple of quick steps and you can right-click any YouTube video to keep it for offline viewing.")
                     .foregroundStyle(.secondary)
             }
         }
     }
 
     private var engineSection: some View {
-        GuideCard(number: 1, title: "Install the download engine", symbol: "shippingbox") {
-            Text("TubeVault uses the free tools **yt-dlp** and **ffmpeg** to download videos. Install them once with [Homebrew](https://brew.sh) by pasting this into Terminal:")
-            CommandBox(command: brewCommand)
+        GuideCard(number: 1, title: "Download engine", symbol: "shippingbox") {
+            Text("TubeVault downloads with the free tools **yt-dlp** and **ffmpeg**. It sets them up by itself the first time it opens (about 130 MB, once). Nothing to install.")
             HStack(spacing: 14) {
-                StatusPill(name: "yt-dlp", ok: ytdlpPath != nil)
-                StatusPill(name: "ffmpeg", ok: ffmpegPath != nil)
-                Spacer()
-                Button("Open Terminal") {
-                    NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
-                }
-                Button("Check Again") {
-                    ytdlpPath = Tools.path(for: "yt-dlp")
-                    ffmpegPath = Tools.path(for: "ffmpeg")
+                switch installer.state {
+                case .installing(let progress):
+                    ProgressView(value: progress).frame(width: 180)
+                    Text("Setting up… \(Int(progress * 100))%")
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                case .failed(let message):
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Spacer()
+                    Button("Try Again") { Task { await installer.ensure() } }
+                default:
+                    StatusPill(name: "yt-dlp", ok: installer.isReady || Tools.path(for: "yt-dlp") != nil)
+                    StatusPill(name: "ffmpeg", ok: installer.isReady || Tools.path(for: "ffmpeg") != nil)
+                    Spacer()
+                    if !installer.isReady {
+                        Button("Set Up") { Task { await installer.ensure() } }
+                    }
                 }
             }
         }

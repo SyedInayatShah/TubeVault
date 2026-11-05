@@ -216,8 +216,9 @@ final class DownloadManager {
     }
 
     nonisolated private static func fetchPlaylist(_ listID: String, video: String?) async -> PlaylistFetch {
+        if await !ToolInstaller.shared.isReady { await ToolInstaller.shared.ensure() }
         guard let ytdlp = Tools.path(for: "yt-dlp") else {
-            return .failed("yt-dlp isn’t installed. In Terminal run: brew install yt-dlp ffmpeg")
+            return .failed(await ToolInstaller.shared.failureMessage)
         }
         let url = video.map { "https://www.youtube.com/watch?v=\($0)&list=\(listID)" }
             ?? "https://www.youtube.com/playlist?list=\(listID)"
@@ -368,8 +369,10 @@ final class DownloadManager {
     /// retried: a second attempt after YouTube blocked or throttled the first.
     /// cookiesFrom: a browser to borrow the YouTube sign-in from, used when YouTube asks to "confirm you're not a bot".
     private func run(_ task: DownloadTask, retried: Bool = false, cookiesFrom browser: String? = nil) async {
+        // First download on a new Mac: set up yt-dlp and friends before starting.
+        if !ToolInstaller.shared.isReady { await ToolInstaller.shared.ensure() }
         guard let ytdlp = Tools.path(for: "yt-dlp") else {
-            task.state = .failed("yt-dlp isn’t installed. In Terminal run: brew install yt-dlp ffmpeg")
+            task.state = .failed(ToolInstaller.shared.failureMessage)
             return
         }
         Paths.ensure()
@@ -627,7 +630,9 @@ final class DownloadManager {
 }
 
 enum Tools {
+    /// TubeVault's own copies (ToolInstaller) first, then Homebrew and other usual places.
     static let searchPaths = [
+        Paths.support.appendingPathComponent("Tools", isDirectory: true).path,
         "/opt/homebrew/bin",
         "/usr/local/bin",
         "/usr/bin",

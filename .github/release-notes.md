@@ -1,3 +1,10 @@
+## What's new in 1.6.0
+
+- **No more Homebrew or Terminal.** TubeVault now sets up its download engine (yt-dlp, ffmpeg and deno) by itself the first time it opens: about 130 MB, from each tool's official release, checked against its official checksum or Apple Developer ID signature before it's used. If you click download before it's finished, the download simply waits.
+- **yt-dlp stays up to date.** TubeVault checks once a day for a newer yt-dlp, since YouTube often breaks older versions.
+- Already have them from Homebrew? TubeVault keeps using those.
+- The setup guide shows the engine's progress, with **Set Up** / **Try Again** buttons.
+
 ## What's new in 1.5.9
 
 - **Save all goes up to 1000 Shorts** (was 500). It still skips the next 150 in your feed first. 1000 Shorts can take 10–30 GB or more; it stops by itself if your Mac gets under 2 GB free.
