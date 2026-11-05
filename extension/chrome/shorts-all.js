@@ -1,9 +1,9 @@
 // "Save all" on YouTube Shorts: saves Shorts from your own feed (it asks YouTube for them with your
 // sign-in, so nothing has to play), skipping the next 150 you'd scroll through on YouTube anyway.
-// It keeps TubeVault topped up a few at a time, up to 500, until it's stopped or this tab is closed.
+// It keeps TubeVault topped up a few at a time, up to 1000, until it's stopped or this tab is closed.
 (() => {
   const NS = "http://www.w3.org/2000/svg";
-  const LIMIT = 500;
+  const LIMIT = 1000;
   const SKIP = 150; // upcoming Shorts left for YouTube, since you'd watch those there anyway
   const AHEAD = 20; // Shorts queued in TubeVault at a time
   const ICONS = {

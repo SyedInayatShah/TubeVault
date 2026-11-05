@@ -1,3 +1,9 @@
+## What's new in 1.5.9
+
+- **Save all goes up to 1000 Shorts** (was 500). It still skips the next 150 in your feed first. 1000 Shorts can take 10–30 GB or more; it stops by itself if your Mac gets under 2 GB free.
+
+**Updating the extension:** TubeVault updates itself. Then in `chrome://extensions` click **↻ reload** on the TubeVault card (in Safari, **Reload** in Settings › Extensions) and refresh your YouTube tabs.
+
 ## What's new in 1.5.8
 
 - **Works in Safari.** The same extension now runs in Safari, with all the same buttons: the player ⬇, Shorts **Save** and **Save all**, playlists, and the right-click menu. In Safari, open **Settings › Advanced** and turn on **Show features for web developers**. Then go to **Settings › Developer › Add Temporary Extension…** and choose the **TubeVault Chrome Extension** folder. Full steps are in TubeVault's setup guide (**Help › TubeVault Setup Guide**) and the README.
